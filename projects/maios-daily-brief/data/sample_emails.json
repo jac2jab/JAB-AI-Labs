@@ -1,0 +1,42 @@
+[
+  {
+    "sender": "The Neuron",
+    "subject": "OpenAI launches new enterprise agent features",
+    "date": "2026-07-29",
+    "category": "AI News",
+    "priority": 5,
+    "summary": "OpenAI introduced new enterprise capabilities for building and managing AI agents."
+  },
+  {
+    "sender": "NVIDIA Developer",
+    "subject": "New tools for deploying AI inference",
+    "date": "2026-07-29",
+    "category": "AI Infrastructure",
+    "priority": 5,
+    "summary": "NVIDIA announced updated inference deployment tools for enterprise AI workloads."
+  },
+  {
+    "sender": "LinkedIn Jobs",
+    "subject": "New AI Solutions Engineer jobs",
+    "date": "2026-07-29",
+    "category": "Career",
+    "priority": 4,
+    "summary": "Several new AI and presales roles were identified for review."
+  },
+  {
+    "sender": "Techpresso",
+    "subject": "Five AI tools trending this week",
+    "date": "2026-07-29",
+    "category": "AI Tools",
+    "priority": 2,
+    "summary": "A roundup of recently released AI productivity tools."
+  },
+  {
+    "sender": "Retail Newsletter",
+    "subject": "Today only: summer clearance",
+    "date": "2026-07-29",
+    "category": "Promotional",
+    "priority": 1,
+    "summary": "General retail promotion with no relevance to current goals."
+  }
+]
