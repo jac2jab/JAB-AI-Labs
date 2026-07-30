@@ -30,3 +30,14 @@ The first prototype:
 
 ```powershell
 python generate_brief.py
+```
+
+## Version 0.2
+
+Version 0.2 adds:
+
+- Automatic email categorization
+- Automatic priority scoring
+- Explainable keyword matches
+- Whole-word matching to prevent false positives
+- Filtering based on calculated relevance
