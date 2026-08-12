@@ -1,32 +1,110 @@
 [
   {
     "sender": "The Neuron",
-    "subject": "OpenAI launches new enterprise agent features",
-    "date": "2026-07-30",
-    "body": "OpenAI introduced new enterprise capabilities for building and managing AI agents."
+    "subject": "OpenAI launches enterprise agent orchestration",
+    "date": "2026-08-12",
+    "body": "OpenAI introduced enterprise agent orchestration capabilities, letting companies build and manage multi-step AI agents across internal systems with centralized governance."
+  },
+  {
+    "sender": "TLDR AI",
+    "subject": "OpenAI ships agent orchestration for enterprises",
+    "date": "2026-08-12",
+    "body": "OpenAI announced enterprise orchestration for AI agents, giving companies centralized governance over multi-step agents running across internal systems."
+  },
+  {
+    "sender": "Ben's Bites",
+    "subject": "Enterprise agent orchestration arrives from OpenAI",
+    "date": "2026-08-12",
+    "body": "OpenAI has launched enterprise agent orchestration, letting companies manage multi-step AI agents across internal systems with governance controls."
   },
   {
     "sender": "NVIDIA Developer",
-    "subject": "New tools for deploying AI inference",
-    "date": "2026-07-30",
-    "body": "NVIDIA announced updated inference deployment tools for enterprise AI workloads."
+    "subject": "New inference deployment tools for enterprise AI",
+    "date": "2026-08-12",
+    "body": "NVIDIA released updated inference deployment tooling for enterprise AI workloads, improving GPU utilization for retrieval augmented generation pipelines."
+  },
+  {
+    "sender": "Import AI",
+    "subject": "NVIDIA updates enterprise inference deployment tooling",
+    "date": "2026-08-12",
+    "body": "NVIDIA shipped new inference deployment tools targeting enterprise AI workloads, with better GPU utilization for retrieval augmented generation pipelines."
   },
   {
     "sender": "LinkedIn Jobs",
-    "subject": "New AI Solutions Engineer jobs",
-    "date": "2026-07-30",
-    "body": "Several new AI and presales roles were identified for review."
+    "subject": "New AI Solutions Engineer roles matching your profile",
+    "date": "2026-08-12",
+    "body": "Seven new AI solutions engineer and presales roles were posted this week at companies matching your saved search criteria."
+  },
+  {
+    "sender": "Pure Storage Talent",
+    "subject": "Following up on your Technical Evangelist application",
+    "date": "2026-08-12",
+    "body": "The recruiter would like to reconnect about the Technical Evangelist role and discuss where the search currently stands."
+  },
+  {
+    "sender": "Anthropic",
+    "subject": "Claude adds long-running agent sessions",
+    "date": "2026-08-12",
+    "body": "Anthropic announced managed agent sessions that persist state across long-running tasks, aimed at enterprise automation workloads."
   },
   {
     "sender": "Techpresso",
-    "subject": "Five AI tools trending this week",
-    "date": "2026-07-30",
-    "body": "A roundup of recently released AI productivity tools."
+    "subject": "Five AI productivity tools trending this week",
+    "date": "2026-08-12",
+    "body": "A roundup of recently released AI productivity tools for note-taking, meeting summaries, and document workflows."
+  },
+  {
+    "sender": "Latent Space",
+    "subject": "How RAG pipelines break at scale",
+    "date": "2026-08-12",
+    "body": "A technical breakdown of retrieval augmented generation failure modes at production scale, covering chunking strategy and embedding drift."
+  },
+  {
+    "sender": "MLOps Weekly",
+    "subject": "Vector database benchmarks updated",
+    "date": "2026-08-12",
+    "body": "Updated benchmark results comparing vector database query latency and recall across common embedding dimensions."
+  },
+  {
+    "sender": "Recruiter — Verkada",
+    "subject": "Interview availability for Global Solutions Engineer",
+    "date": "2026-08-12",
+    "body": "Requesting your availability next week for a first-round interview for the global solutions engineer position."
+  },
+  {
+    "sender": "Coursera",
+    "subject": "Your certificate is ready to share",
+    "date": "2026-08-12",
+    "body": "Your course certificate has been issued and can now be added to your professional profile."
+  },
+  {
+    "sender": "Mom",
+    "subject": "Dinner Sunday",
+    "date": "2026-08-12",
+    "body": "Are you free at six on Sunday? Let me know."
   },
   {
     "sender": "Retail Newsletter",
-    "subject": "Today only: summer clearance",
-    "date": "2026-07-30",
-    "body": "General retail promotion with no relevance to current goals."
+    "subject": "Today only: summer clearance sale",
+    "date": "2026-08-12",
+    "body": "General retail promotion with a discount code for seasonal clearance items."
+  },
+  {
+    "sender": "Gadget Deals",
+    "subject": "Flash sale: 40 percent discount on accessories",
+    "date": "2026-08-12",
+    "body": "Limited time promotion offering a coupon for discounted electronics accessories today only."
+  },
+  {
+    "sender": "Conference Marketing",
+    "subject": "Early bird pricing ends soon",
+    "date": "2026-08-12",
+    "body": "Promotional reminder that discounted registration pricing for the conference expires this week."
+  },
+  {
+    "sender": "Home Insurance",
+    "subject": "Your policy documents are available",
+    "date": "2026-08-12",
+    "body": "Annual policy documentation has been posted to your account portal for review."
   }
 ]

@@ -1,5 +1,32 @@
 # JAB AI Labs Changelog
 
+## 2026-08-12 — MAIOS Daily Brief v0.3
+
+### Added
+- `summarizer.py` — pluggable summarization with three backends tried in order:
+  local Ollama, the Anthropic API, then a clearly-labelled extractive fallback
+  so the program runs for anyone who clones the repository
+- `deduplicate.py` — explainable near-duplicate consolidation, closing ROADMAP
+  success criterion #2, which previously had zero lines of implementation
+- Stage-by-stage measurement: items in, duplicates merged, items filtered,
+  items out, and the reduction percentage against the 80% target
+- Expanded the fixture from 5 to 18 records, including genuine duplicate
+  coverage of the same stories
+
+### Fixed
+- `MINIMUM_PRIORITY` raised from `3` to `4`. It had equalled the baseline score
+  every item starts at, so anything matching no keyword passed by default
+- `create_summary()` no longer returns the source body unchanged
+- Raised the local-model request timeout from 60s to 180s. The first call also
+  loads the model into memory, and on a cold start that exceeded the old
+  timeout — silently degrading the entire brief to the fallback
+
+### Measured
+- Reduction against the fixture: **20% → 67%** (target 80%)
+- Summaries byte-identical to their source: **6 of 6 → 0 of 6**, all produced by
+  a local `llama3.2` via Ollama
+- Full cold-start run, including model load: ~45s for 18 items
+
 ## 2026-08-12
 
 ### Added

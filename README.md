@@ -37,38 +37,84 @@ anyone else's attention.
 
 ### MAIOS Daily Brief — current state
 
-Reads inbound email records, assigns each a category and a 1–5 priority score,
-filters out low-relevance items, groups what's left by category, and writes a dated
-Markdown brief with recommended next actions.
+The pipeline is `load → categorize + score → deduplicate → filter → summarize →
+render`. Every stage reports how many items it removed, so the roadmap's
+"reduce daily reading time by at least 80%" target is measured, not assumed.
 
 ```powershell
 cd projects/maios-daily-brief
 python generate_brief.py
 ```
 
+Current run against the 18-item fixture, summarized by a local `llama3.2`
+(cold start, including model load):
+
+```
+Items in:            18
+Duplicates merged:  -3
+Below relevance:    -9
+Items out:           6
+Reduction:           67%  (target: 80%)
+Summarizer:          ollama:llama3.2
+```
+
+### Summarization backends
+
+Tried in order, so the program runs for anyone who clones it:
+
+| Backend | Requires | Why this order |
+|---|---|---|
+| **Ollama** (local) | `ollama pull llama3.2` | MAIOS Principle 1 — private by default |
+| **Anthropic API** | `pip install anthropic` + `ANTHROPIC_API_KEY` | Used when no local model is present |
+| **Extractive fallback** | nothing | Truncates the first sentence — **not a real summary** |
+
+The brief names the backend that produced its summaries, so fallback output is
+never presented as model-generated.
+
+### Version history
+
 **v0.1** (29 Jul 2026) — load, filter, sort, group, generate.
+
 **v0.2** (30 Jul 2026) — automatic categorization, priority scoring, whole-word
 matching to eliminate false positives, and *explainable* scoring: every priority
 decision reports the keywords that produced it.
 
-Sample output: [`daily_brief_2026-07-30.md`](projects/maios-daily-brief/output/daily_brief_2026-07-30.md)
+**v0.3** (12 Aug 2026) — pluggable model-based summarization; deduplication;
+a relevance floor that actually filters; stage-by-stage measurement.
 
-### Known limitations — the v0.3 backlog
+Sample output: [`daily_brief_2026-08-12.md`](projects/maios-daily-brief/output/daily_brief_2026-08-12.md)
 
-Stated plainly, because knowing what a system *doesn't* do is part of engineering it:
+### What v0.3 fixed
 
-- **Scoring is deterministic, not model-based.** v0.2 uses keyword and rule
-  matching only — there is no LLM call in the pipeline yet.
-- **Summarization is a pass-through.** `create_summary()` currently returns the
-  source text unchanged. It reformats; it does not condense.
-- **No deduplication.** When five newsletters cover the same story, the brief
-  reports it five times. This is the highest-value gap.
-- **Input is sample data.** The pipeline runs against a small JSON fixture, not a
-  live mailbox, so the roadmap's "reduce reading time by 80%" target is not yet
-  measurable.
+- **Deduplication now exists** (ROADMAP criterion #2, previously zero lines).
+  Near-duplicates are detected by content-word overlap and consolidated, and
+  each merge explains itself — similarity score plus the shared terms. Real
+  duplicates in the fixture score 0.52–0.65; unrelated AI stories score 0.12.
+- **The relevance floor filters.** v0.2 set `MINIMUM_PRIORITY` to `3` — the same
+  value every item starts at — so anything matching no keyword passed by
+  default. It is now `4`. A personal note that used to reach the brief no
+  longer does.
+- **Summarization calls a model** where one is available, instead of returning
+  the source text unchanged.
+- **Reduction is measured** at every stage rather than claimed.
 
-**v0.3** closes these in order: model-based summarization → deduplication → live
-inbox input → measurement instrumentation.
+### Known limitations
+
+- **Condensation is not yet demonstrated.** Summaries are genuinely abstractive
+  — 0 of 6 are byte-identical to their source, where v0.2 was 6 of 6 — but the
+  fixture's bodies are single sentences, so there is nothing to compress:
+  average length goes 18 words in, 20 words out. The reduction above comes from
+  deduplication and filtering, not from shortening. Real multi-paragraph
+  newsletters are needed to show the summarizer earning its place.
+- **Input is a fixture**, not a live mailbox. The 67% is measured, but measured
+  against sample data — which is also why the point above is still open.
+- **Deduplication is lexical**, not semantic. Two write-ups of the same story
+  that share little vocabulary will not be caught. Embeddings are the next step.
+- **Throughput is one model call per item**, ~5s each on a local model. Fine for
+  a daily brief; it would need batching for a larger inbox.
+
+**v0.4**: live inbox input — which also closes out the condensation question —
+then semantic deduplication.
 
 ---
 
