@@ -1,7 +1,7 @@
 # Module 01 - AI Foundations
 
 ## Goal
-Understand the core AI concepts behind Jason OS.
+Understand the core AI concepts behind MAIOS.
 
 ## Topics
 - LLMs
@@ -15,7 +15,7 @@ Understand the core AI concepts behind Jason OS.
 - Local vs cloud AI
 
 ## Lab
-Design the first Jason OS architecture diagram.
+Design the first MAIOS architecture diagram.
 
 ## Deliverable
-Explain the Jason OS AI stack in plain English.
+Explain the MAIOS AI stack in plain English.
