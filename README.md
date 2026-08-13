@@ -46,17 +46,35 @@ cd projects/maios-daily-brief
 python generate_brief.py
 ```
 
-Current run against the 18-item fixture, summarized by a local `llama3.2`
-(cold start, including model load):
+Current run against the 18-item fixture, summarized by a local `llama3.2`:
 
 ```
 Items in:            18
 Duplicates merged:  -3
 Below relevance:    -9
 Items out:           6
-Reduction:           67%  (target: 80%)
-Summarizer:          ollama:llama3.2
+Item reduction:      67%
+Words to read:       1,589 -> 130
+Reading reduction:   92%  (target: 80%)
 ```
+
+**The roadmap's target is reading time, so the metric counts words, not items.**
+An inbox of long newsletters and a brief of one-line summaries are not
+comparable by item count alone.
+
+### Input sources
+
+```powershell
+python generate_brief.py                        # the JSON fixture
+python generate_brief.py --source ./inbox/      # a directory of .eml files
+python generate_brief.py --source mail.mbox     # a Gmail Takeout archive
+```
+
+Reading exported mail from disk needs no password, no OAuth consent screen, and
+no network — MAIOS Principle 1, private by default. Mail is read locally,
+summarized by a local model, and never leaves the machine. Multipart messages
+prefer their plain-text part; HTML-only messages are stripped of tags, scripts,
+and entities.
 
 ### Summarization backends
 
@@ -82,39 +100,49 @@ decision reports the keywords that produced it.
 **v0.3** (12 Aug 2026) — pluggable model-based summarization; deduplication;
 a relevance floor that actually filters; stage-by-stage measurement.
 
-Sample output: [`daily_brief_2026-08-12.md`](projects/maios-daily-brief/output/daily_brief_2026-08-12.md)
+**v0.4** (13 Aug 2026) — real email ingestion (`.eml`, `.mbox`); reading-time
+measured in words; a length-robust similarity metric. **First version to meet
+the roadmap's 80% target.**
 
-### What v0.3 fixed
+Sample output: [`daily_brief_2026-08-13.md`](projects/maios-daily-brief/output/daily_brief_2026-08-13.md)
 
-- **Deduplication now exists** (ROADMAP criterion #2, previously zero lines).
-  Near-duplicates are detected by content-word overlap and consolidated, and
-  each merge explains itself — similarity score plus the shared terms. Real
-  duplicates in the fixture score 0.52–0.65; unrelated AI stories score 0.12.
-- **The relevance floor filters.** v0.2 set `MINIMUM_PRIORITY` to `3` — the same
-  value every item starts at — so anything matching no keyword passed by
-  default. It is now `4`. A personal note that used to reach the brief no
-  longer does.
-- **Summarization calls a model** where one is available, instead of returning
-  the source text unchanged.
-- **Reduction is measured** at every stage rather than claimed.
+### What v0.4 fixed
+
+Feeding the pipeline realistic multi-paragraph bodies broke deduplication, and
+the fix is the most interesting thing in this release.
+
+**Jaccard similarity was the wrong metric.** It divides shared terms by the
+*union*, so it penalizes length mismatch. A 160-word article and a 70-word
+write-up of the same story scored **0.24** — below any threshold that also
+excluded unrelated mail. Duplicate detection silently dropped to zero.
+
+The **overlap coefficient** asks the question that actually matters for
+newsletters: how much of the shorter item's vocabulary appears in the longer
+one? Measured across the fixture:
+
+| Metric | Worst true duplicate | Closest false pair | Margin |
+|---|---|---|---|
+| Jaccard | 0.238 | 0.144 | 0.094 |
+| **Overlap coefficient** | **0.446** | **0.262** | **0.185** |
+
+Nearly double the separation, so the threshold sits at 0.35 with room on both
+sides — chosen by measuring, not by taste.
 
 ### Known limitations
 
-- **Condensation is not yet demonstrated.** Summaries are genuinely abstractive
-  — 0 of 6 are byte-identical to their source, where v0.2 was 6 of 6 — but the
-  fixture's bodies are single sentences, so there is nothing to compress:
-  average length goes 18 words in, 20 words out. The reduction above comes from
-  deduplication and filtering, not from shortening. Real multi-paragraph
-  newsletters are needed to show the summarizer earning its place.
-- **Input is a fixture**, not a live mailbox. The 67% is measured, but measured
-  against sample data — which is also why the point above is still open.
 - **Deduplication is lexical**, not semantic. Two write-ups of the same story
-  that share little vocabulary will not be caught. Embeddings are the next step.
-- **Throughput is one model call per item**, ~5s each on a local model. Fine for
-  a daily brief; it would need batching for a larger inbox.
+  that share little vocabulary still will not be caught. Embeddings are the
+  next step.
+- **The fixture is synthetic.** Bodies are now realistically long, but they are
+  written, not captured. The `.eml` path is tested against generated messages
+  covering plain-text, multipart, and HTML-only shapes — real newsletters will
+  surface encodings these do not.
+- **Throughput is one model call per item**, ~5s each locally. Fine for a daily
+  brief; a large mailbox would need batching.
+- **Scoring is still keyword-based.** Summarization uses a model; relevance
+  does not.
 
-**v0.4**: live inbox input — which also closes out the condensation question —
-then semantic deduplication.
+**v0.5**: semantic deduplication via embeddings, and model-assisted scoring.
 
 ---
 

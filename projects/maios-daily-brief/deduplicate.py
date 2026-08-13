@@ -19,10 +19,14 @@ STOPWORDS = frozenset(
     """.split()
 )
 
-# Share of content words two items must have in common to be called duplicates.
-# 0.45 was chosen by running the fixture: real duplicates score well above it,
-# unrelated items about the same broad topic score well below.
-SIMILARITY_THRESHOLD = 0.45
+# Share of the SHORTER item's vocabulary that must appear in the longer one
+# before the two are called duplicates.
+#
+# Chosen by measuring the fixture rather than by taste. On realistic
+# newsletter lengths the worst true duplicate scores 0.446 and the closest
+# false pair (two unrelated recruiter emails) scores 0.262, so 0.35 sits
+# roughly midway between them.
+SIMILARITY_THRESHOLD = 0.35
 
 MINIMUM_TOKENS = 3
 
@@ -40,16 +44,22 @@ def content_tokens(email: dict) -> set[str]:
 
 
 def similarity(first: set[str], second: set[str]) -> float:
-    """Jaccard similarity: shared terms as a share of all terms across both."""
+    """Overlap coefficient: shared terms as a share of the smaller vocabulary.
+
+    Jaccard was the obvious first choice and it was wrong here. Dividing by the
+    union penalizes length mismatch, so a 160-word article and a 70-word
+    write-up of the *same story* scored 0.24 — below any threshold that also
+    excluded genuinely unrelated mail.
+
+    The overlap coefficient asks the question that actually matters for
+    newsletters: how much of the shorter item's vocabulary shows up in the
+    longer one? Measured on the fixture, that widened the gap between true and
+    false duplicates from 0.09 to 0.19.
+    """
     if not first or not second:
         return 0.0
 
-    union = first | second
-
-    if not union:
-        return 0.0
-
-    return len(first & second) / len(union)
+    return len(first & second) / min(len(first), len(second))
 
 
 def deduplicate(emails: list[dict], threshold: float = SIMILARITY_THRESHOLD) -> list[dict]:

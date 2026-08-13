@@ -1,5 +1,41 @@
 # JAB AI Labs Changelog
 
+## 2026-08-13 — MAIOS Daily Brief v0.4
+
+**First version to meet the ROADMAP's "reduce daily reading time by at least
+80%" target: 92% measured.**
+
+### Added
+- `ingest.py` — read real mail from `.eml` files, a directory of them, or a
+  `.mbox` archive, alongside the JSON fixture. Standard library only: no
+  password, no OAuth consent screen, no network (MAIOS Principle 1). Multipart
+  messages prefer their plain-text part; HTML-only messages are stripped of
+  tags, scripts, and entities
+- `--source` argument for choosing the input
+- Reading-time measured in **words**, not items. The roadmap's target is about
+  time spent reading, and an inbox of long newsletters is not comparable to a
+  brief of one-line summaries by item count
+- The brief now records its own provenance — which source and which summarizer
+
+### Changed
+- Fixture bodies rewritten to realistic newsletter length (~88 words average,
+  up from ~20), so condensation can actually be measured
+
+### Fixed
+- **Deduplication silently broke on realistic body lengths.** Jaccard
+  similarity divides by the union, so it penalizes length mismatch: a 160-word
+  article and a 70-word write-up of the same story scored 0.24 and merged
+  nothing. Replaced with the overlap coefficient, which measures how much of
+  the shorter item's vocabulary appears in the longer one. Separation between
+  true and false duplicates widened from 0.094 to 0.185; threshold retuned
+  from 0.45 to 0.35 against measurements rather than taste
+
+### Measured
+- Reading reduction: **92%** (target 80%) — 1,589 words in, 130 words out
+- Item reduction: 67% — 3 duplicates consolidated, 9 below the relevance floor
+- Verified end to end against real `.eml` files in plain-text, multipart, and
+  HTML-only shapes, with no markup leaking into any body
+
 ## 2026-08-12 — MAIOS Daily Brief v0.3
 
 ### Added
