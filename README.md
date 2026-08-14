@@ -129,15 +129,62 @@ one? Measured across the fixture:
 Nearly double the separation, so the threshold sits at 0.35 with room on both
 sides — chosen by measuring, not by taste.
 
+### First run against real mail (14 Aug 2026)
+
+Six newsletters downloaded from Gmail as `.eml` — Techpresso, The Neuron,
+Smarter with AI:
+
+```
+Items in:            6
+Below relevance:    -3
+Words to read:       3,903 -> 70
+Reading reduction:   98%  (target: 80%)
+```
+
+Real mail broke three things the synthetic fixture never could:
+
+1. **`text/plain` is often a stub.** Techpresso ships 210 characters — *"You
+   are reading a plain text version of this post, view it online at…"* —
+   beside 102KB of HTML holding the actual article. Preferring plain text
+   discarded the entire newsletter. Now the two are compared and the one
+   carrying content wins.
+2. **Numeric HTML entities survived.** The hand-written entity table knew
+   `&nbsp;` but not `&#160;` or `&#8204;`, and newsletters pad the inbox
+   preview with hundreds of zero-width joiners. Replaced with
+   `html.unescape()` plus an invisible-character strip.
+3. **URLs crowded out the article.** A single tracking link can exceed 200
+   characters, and the body is capped at 4,000.
+
+Fixing those took Techpresso from 29 usable words to 630.
+
+### The scoring flaw real mail exposed
+
+Keyword scoring inverted its own job on this sample:
+
+| Item | Decision | Reason given |
+|---|---|---|
+| Grok 4.6 is here to slash your agent bill | **dropped** | no keywords matched |
+| ChatGPT Can Now Edit Your Videos | **dropped** | no keywords matched |
+| Apple may pay publishers for Siri news | **kept, 5/5** | matched `openai`, `enterprise` |
+
+Two causes. `chatgpt` and `grok` are not in the keyword list, and no hand-kept
+list survives contact with a field that names a new model every month.
+Separately, newsletters are roundups of eight stories, so a keyword in story
+seven scores the whole email — which is how an Apple/Siri headline scored on
+`openai`.
+
+Summarization already uses a model; relevance does not. That is the gap.
+
 ### Known limitations
 
 - **Deduplication is lexical**, not semantic. Two write-ups of the same story
   that share little vocabulary still will not be caught. Embeddings are the
   next step.
-- **The fixture is synthetic.** Bodies are now realistically long, but they are
-  written, not captured. The `.eml` path is tested against generated messages
-  covering plain-text, multipart, and HTML-only shapes — real newsletters will
-  surface encodings these do not.
+- **Newsletter furniture is stripped heuristically.** URLs, image placeholders,
+  and punctuation rules are removed by pattern. Tuned against six real
+  newsletters from three senders — a wider sample will surface more.
+- **Relevance scoring is keyword-based** and demonstrably wrong on roundup
+  newsletters (see above). This is the next thing to fix.
 - **Throughput is one model call per item**, ~5s each locally. Fine for a daily
   brief; a large mailbox would need batching.
 - **Scoring is still keyword-based.** Summarization uses a model; relevance

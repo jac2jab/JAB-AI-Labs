@@ -15,6 +15,7 @@ Exporting mail to feed it:
 
 import email
 import email.policy
+import html
 import json
 import mailbox
 import re
@@ -24,31 +25,51 @@ from pathlib import Path
 # summarize from and bounds both latency and memory.
 MAX_BODY_CHARACTERS = 4000
 
+# Newsletters pad the inbox preview snippet with hundreds of invisible
+# characters. Unescaped they are silent; escaped as &#8204; they flood the
+# extracted text and consume the character budget before any real content.
+INVISIBLE_CHARACTERS = dict.fromkeys(
+    map(ord, "​‌‍⁠﻿­"), None
+)
 
-def _strip_html(html: str) -> str:
+# A text/plain part shorter than this is treated as a stub rather than the
+# article, and the HTML part is used instead if it carries more.
+STUB_BODY_CHARACTERS = 600
+
+
+def _strip_html(markup: str) -> str:
     """Reduce an HTML body to readable text.
 
-    Deliberately crude — no dependency, and the summarizer only needs prose,
-    not structure.
+    Deliberately crude — no dependency, and the summarizer needs prose, not
+    structure. Entity decoding is delegated to the standard library rather than
+    a hand-written table: real newsletters use numeric entities heavily, and a
+    table that only knows `&nbsp;` leaves `&#160;` and `&#8204;` intact.
     """
-    text = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", html)
-    text = re.sub(r"(?i)<br\s*/?>|</p>|</div>|</tr>", "\n", text)
+    text = re.sub(r"(?is)<(script|style|head).*?>.*?</\1>", " ", markup)
+    text = re.sub(r"(?i)<br\s*/?>|</p>|</div>|</tr>|</h[1-6]>", "\n", text)
     text = re.sub(r"(?s)<[^>]+>", " ", text)
 
-    replacements = {
-        "&nbsp;": " ", "&amp;": "&", "&lt;": "<", "&gt;": ">",
-        "&quot;": '"', "&#39;": "'", "&mdash;": "—", "&ndash;": "–",
-    }
-    for entity, character in replacements.items():
-        text = text.replace(entity, character)
-
-    return text
+    return html.unescape(text)
 
 
 def _clean(text: str) -> str:
-    """Collapse whitespace and trim to a workable length."""
+    """Strip newsletter furniture, collapse whitespace, and bound the length."""
+    text = text.translate(INVISIBLE_CHARACTERS)
+    text = text.replace(" ", " ")
+
+    # URLs carry no meaning for a summarizer and are long enough to crowd out
+    # the article itself — one tracking link can run past 200 characters.
+    text = re.sub(r"\(?\bhttps?://\S+\)?", " ", text)
+
+    # Image and link placeholders left behind by HTML-to-text conversion.
+    text = re.sub(r"(?im)^\s*(view image|image)\s*:\s*$", " ", text)
+    text = re.sub(r"(?i)\bview image\b\s*:?", " ", text)
+
+    # Rules made of repeated punctuation, used as section dividers.
+    text = re.sub(r"(?m)^\s*[-–—=_*·•]{3,}\s*$", "\n", text)
+
     text = re.sub(r"[ \t\r\f\v]+", " ", text)
-    text = re.sub(r"\n\s*\n\s*\n+", "\n\n", text)
+    text = re.sub(r"\n[ \t]*\n[ \t]*\n+", "\n\n", text)
     text = text.strip()
 
     if len(text) <= MAX_BODY_CHARACTERS:
@@ -83,10 +104,19 @@ def _body_of(message: email.message.Message) -> str:
         elif part.get_content_type() == "text/html":
             html_parts.append(content)
 
-    if plain_parts:
-        return _clean("\n".join(plain_parts))
+    plain = _clean("\n".join(plain_parts)) if plain_parts else ""
+    from_html = _clean(_strip_html("\n".join(html_parts))) if html_parts else ""
 
-    return _clean(_strip_html("\n".join(html_parts)))
+    # Plain text is preferred when it is real. Many newsletters ship a stub
+    # instead — "You are reading a plain text version of this post, view it
+    # online at..." — where the article lives only in the HTML part. Measured
+    # on real Techpresso mail: a 210-character stub beside 102KB of HTML.
+    # Falling back only when plain text is absent silently discards the entire
+    # newsletter, so compare the two and take the one carrying content.
+    if plain and (len(plain) >= STUB_BODY_CHARACTERS or len(plain) >= len(from_html)):
+        return plain
+
+    return from_html or plain
 
 
 def _record_from(message: email.message.Message) -> dict:

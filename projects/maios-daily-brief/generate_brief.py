@@ -219,12 +219,18 @@ def generate_markdown(emails: list[dict], metrics: dict, backend: str, source: s
     return "\n".join(lines)
 
 
-def save_brief(content: str) -> Path:
-    """Save the daily brief to the output directory."""
+def save_brief(content: str, source: Path) -> Path:
+    """Save the daily brief, named by date and source.
+
+    The source belongs in the filename because two runs on the same day from
+    different inboxes are two different briefs. Naming by date alone let a
+    fixture run silently overwrite a real-mail one.
+    """
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+    slug = re.sub(r"[^a-z0-9]+", "-", source.stem.lower()).strip("-") or "inbox"
     date_string = datetime.now().strftime("%Y-%m-%d")
-    output_file = OUTPUT_DIR / f"daily_brief_{date_string}.md"
+    output_file = OUTPUT_DIR / f"daily_brief_{date_string}_{slug}.md"
 
     output_file.write_text(content, encoding="utf-8")
     return output_file
@@ -291,7 +297,7 @@ def main() -> None:
         }
 
         brief = generate_markdown(summarized, metrics, backend, source_label)
-        output_file = save_brief(brief)
+        output_file = save_brief(brief, args.source)
 
         print(f"Source:              {source_label}")
         print(f"Items in:            {metrics['input']}")

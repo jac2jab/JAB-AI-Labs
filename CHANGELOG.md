@@ -1,5 +1,33 @@
 # JAB AI Labs Changelog
 
+## 2026-08-14 — MAIOS Daily Brief v0.4.1
+
+**First run against real mail.** Six newsletters downloaded from Gmail as
+`.eml`: 3,903 words in, 70 words out, **98% reading reduction** in 59 seconds.
+
+### Fixed — all three found only by using real email
+- **`text/plain` is often a stub.** Techpresso ships 210 characters pointing at
+  the web version beside 102KB of HTML holding the article. Preferring plain
+  text silently discarded the whole newsletter. The two parts are now compared
+  and the one carrying content is used — this took Techpresso from 29 usable
+  words to 630
+- **Numeric HTML entities survived stripping.** The hand-written table knew
+  `&nbsp;` but not `&#160;` or `&#8204;`, and newsletters pad the inbox preview
+  with hundreds of zero-width joiners. Replaced with `html.unescape()` and an
+  invisible-character strip
+- **URLs crowded out the article.** One tracking link can exceed 200 characters
+  against a 4,000-character body cap. URLs, image placeholders, and punctuation
+  rules are now stripped
+
+### Found, not yet fixed
+- **Keyword relevance scoring is wrong on roundup newsletters.** It dropped
+  "Grok 4.6 is here to slash your agent bill" and "ChatGPT Can Now Edit Your
+  Videos" for matching no keywords, while keeping an Apple/Siri story at 5/5 on
+  `openai` and `enterprise` — words appearing elsewhere in a 630-word roundup.
+  Two causes: a hand-kept vocabulary cannot track a field that names a new
+  model monthly, and one keyword anywhere scores the entire email. Summarization
+  uses a model; relevance does not. That is v0.5
+
 ## 2026-08-14 — SE Demo Generator scaffold
 
 A second project, from Jason's own domain rather than his inbox. Discovery
