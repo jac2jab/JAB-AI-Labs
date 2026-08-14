@@ -1,5 +1,63 @@
 # JAB AI Labs Changelog
 
+## 2026-08-14 — SE Demo Generator scaffold
+
+A second project, from Jason's own domain rather than his inbox. Discovery
+notes in, demo plan out. The extraction stage was validated in May 2026; the
+generation stage and the vendor pack system are new.
+
+### Added
+- `projects/se-demo-generator/` — two-stage pipeline, deliberately separated
+  because the stages fail differently. Extraction failing means the notes were
+  thin; generation failing usually means the vendor pack was thin
+- `packs.py` — vendor pack schema, loading, and completeness reporting. Eleven
+  sections plus metadata, defined once and used for scaffolding, validation,
+  and loading so they cannot drift apart
+- `new_pack.py` — scaffold a vendor pack. Every section is created carrying
+  **the question it exists to answer**, not as a blank file
+- `vendor_packs/generic/se_playbook.md` — vendor-agnostic SE method, loaded
+  alongside every pack
+- `llm.py` — local Ollama first, Anthropic second. No offline fallback: a demo
+  plan generated without a model would be a template with the customer's name
+  pasted in, which is worse than an honest failure
+- `data/sample_discovery_notes.md` — the constructed enterprise-security
+  scenario the extraction stage was validated against, written as messy
+  in-call notes rather than a tidy summary
+- `.gitignore` entries keeping real discovery notes and exported mail local
+
+### Design decisions made under measurement
+- **Ollama gets JSON mode, not the full schema.** Schema-constrained decoding
+  was tried first and was pathologically slow on llama3.2 — a single extraction
+  did not finish inside ten minutes, against roughly ninety seconds
+  unconstrained. JSON mode fixes the failure that was actually occurring
+  (intermittently malformed output); the caller normalizes the shape afterward.
+  The Anthropic backend still receives the full schema
+- **Generation runs as three grouped calls, not one.** A single request for all
+  seven sections exceeded a five-minute timeout and discarded the extraction
+  that had already succeeded. Grouping bounds each call, shows progress, and
+  lets a partial plan reach the user with the missing parts named
+- **Section membership is enforced in code.** The model does not reliably honour
+  "produce exactly these sections and nothing else" — the first run emitted a
+  Gaps section from two different groups. Each group now declares the headings
+  it owns and anything else is discarded
+- **Output is capped per call.** Ollama generates without limit by default, and
+  a small model given an open-ended prose prompt can fall into a repetition
+  loop that never emits a stop token. One section group hung past a ten-minute
+  timeout twice before this was found; the same prompt with a token cap
+  finished in 104 seconds and stopped naturally at 422 tokens. Measured
+  throughput on llama3.2 here is about 4 tokens/second
+
+### Known state
+- **Vendor packs are empty.** Schema, tooling, and reporting are built; no
+  vendor knowledge is written. Generated plans say so at the top, and with an
+  empty pack the competitive positioning is visibly generic — which is the
+  clearest available evidence for why the packs are the defensible part
+- **Asking the model to admit gaps does not work.** With a 0% pack it invented
+  an architecture, an 80% alert reduction, and a "$X per year" saving, while
+  its `Gaps` section listed competitor pricing questions instead of the actual
+  shortfall. The completeness banner — computed from the pack in code — is the
+  control that holds. Same lesson as section membership: enforce, do not ask
+
 ## 2026-08-13 — MAIOS Daily Brief v0.4
 
 **First version to meet the ROADMAP's "reduce daily reading time by at least

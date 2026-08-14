@@ -33,7 +33,8 @@ anyone else's attention.
 
 | Project | Status | What it does |
 |---|---|---|
-| [`maios-daily-brief`](projects/maios-daily-brief) | **v0.2 — working** | Turns a stream of inbound email into one prioritized morning brief |
+| [`maios-daily-brief`](projects/maios-daily-brief) | **v0.4 — working** | Turns an inbox into one prioritized morning brief. Meets its 80% reading-reduction target. |
+| [`se-demo-generator`](projects/se-demo-generator) | **Running; packs empty** | Turns sales-engineering discovery notes into a demo plan, talk tracks, and competitive positioning |
 
 ### MAIOS Daily Brief — current state
 
@@ -184,11 +185,12 @@ JAB-AI-Labs/
 
 Related applied AI work not yet migrated into this repository:
 
-- **SE Demo Generator** — a multi-stage prompting workflow converting unstructured
-  customer discovery notes into structured opportunity data. Proof of concept:
-  the extraction stage was validated against a constructed enterprise-security
-  scenario; the downstream generation stages are specified but not built.
-- **Local model experimentation** with Ollama (May 2026).
+- **Local model experimentation** with Ollama (May 2026) — now the default
+  backend for both projects above.
+- **Receipt scanner** built in Google AI Studio (2026). Never reached working
+  state; parked rather than published. Document extraction is structurally the
+  same problem as the Daily Brief's ingestion, so it is a candidate to revive
+  as a MAIOS module once there is a reason to.
 
 ## Credentials
 
