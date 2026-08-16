@@ -36,7 +36,7 @@ select both; no match returns everything.
 ## 2026-08-14 — MAIOS Daily Brief v0.4.1
 
 **First run against real mail.** Six newsletters downloaded from Gmail as
-`.eml`: 3,903 words in, 70 words out, **98% reading reduction** in 59 seconds.
+`.eml`: 3,903 words in, 74 words out, **98% reading reduction** in 59 seconds.
 
 ### Fixed — all three found only by using real email
 - **`text/plain` is often a stub.** Techpresso ships 210 characters pointing at

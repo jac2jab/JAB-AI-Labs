@@ -33,7 +33,7 @@ anyone else's attention.
 
 | Project | Status | What it does |
 |---|---|---|
-| [`maios-daily-brief`](projects/maios-daily-brief) | **v0.4 — working** | Turns an inbox into one prioritized morning brief. Meets its 80% reading-reduction target. |
+| [`maios-daily-brief`](projects/maios-daily-brief) | **v0.4.1 — working** | Turns an inbox into one prioritized morning brief. Meets its 80% reading-reduction target. |
 | [`se-demo-generator`](projects/se-demo-generator) | **Running; packs empty** | Turns sales-engineering discovery notes into a demo plan, talk tracks, and competitive positioning |
 
 ### MAIOS Daily Brief — current state
@@ -105,6 +105,10 @@ a relevance floor that actually filters; stage-by-stage measurement.
 measured in words; a length-robust similarity metric. **First version to meet
 the roadmap's 80% target.**
 
+**v0.4.1** (14 Aug 2026) — three ingestion bugs that only real mail could
+expose: stub `text/plain` parts, numeric HTML entities, and URLs crowding out
+the article body. See [First run against real mail](#first-run-against-real-mail-14-aug-2026).
+
 Sample output: [`daily_brief_2026-08-13.md`](projects/maios-daily-brief/output/daily_brief_2026-08-13.md)
 
 ### What v0.4 fixed
@@ -137,7 +141,7 @@ Smarter with AI:
 ```
 Items in:            6
 Below relevance:    -3
-Words to read:       3,903 -> 70
+Words to read:       3,903 -> 74
 Reading reduction:   98%  (target: 80%)
 ```
 
@@ -221,7 +225,8 @@ JAB-AI-Labs/
 ├── CHANGELOG.md
 ├── curriculum/            self-study modules 01–06
 ├── projects/
-│   └── maios-daily-brief/ MAIOS v0.2 — the active project
+│   ├── maios-daily-brief/ MAIOS v0.4.1 — working
+│   └── se-demo-generator/ discovery notes → demo plan; vendor packs unwritten
 ├── labs/                  short experiments
 └── references/            source material and notes
 ```
