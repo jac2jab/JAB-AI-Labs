@@ -91,6 +91,53 @@ though they were content, which produces confident nonsense.
 See [`vendor_packs/README.md`](vendor_packs/README.md) for what makes a pack
 good. **`demo_flows.md` first** — highest value, hardest to reproduce.
 
+### One flow per solution area
+
+A vendor is rarely one product. Trend Micro is endpoint, email, cloud workload,
+network, and attack-surface risk — five solution areas, and which demo you run
+depends on what discovery surfaced. So `demo_flows.md` holds one flow per area,
+each declaring the signals that make it the right one:
+
+```markdown
+## Endpoint and XDR
+
+**Triggered by:** alert fatigue, too many alerts, triage time, endpoint,
+EDR, SOC analyst, ransomware
+
+**Audience:** both
+**Runs in:** ~20 minutes
+
+### Setup
+What must be true in the demo environment before you start.
+
+### Flow
+1. What you show — and why it earns its place in *this* deal
+
+### The moment
+The one screen you want them discussing after you leave.
+
+### Where it goes wrong
+The failure you have actually hit, and how you recover in the room.
+```
+
+**`Triggered by` is executable, not documentation.** Those phrases are matched
+against the extracted opportunity profile, and only the flows that fire are sent
+to the model. Measured against the sample discovery notes:
+
+| Discovery signals | Flows selected |
+|---|---|
+| "400 alerts a day, triage maybe 40"; "onboarding a SOC analyst takes 3 months" | Endpoint and XDR |
+| "users keep clicking phishing links" | Email Security |
+| both of the above | both |
+| nothing matching | all flows (fallback) |
+
+Write the triggers as **the words a customer actually says**. "Alert fatigue"
+appears in discovery notes; an internal product name does not.
+
+Selection happens in code rather than by asking the model to choose the
+relevant flow — the same reason section membership and the completeness banner
+are enforced rather than requested.
+
 ## Known limitations
 
 - **The packs are empty.** The schema, tooling, and completeness reporting are

@@ -1,5 +1,38 @@
 # JAB AI Labs Changelog
 
+## 2026-08-14 — SE Demo Generator: demo flows per solution area
+
+The original schema assumed one product per vendor. Trend Micro is endpoint,
+email, cloud workload, network, and attack-surface risk — five solution areas,
+and which demo you run depends on what discovery surfaced. A single "the demo
+flow" could not represent that.
+
+### Changed
+- `demo_flows.md` now holds **one flow per solution area**, each declaring
+  `**Triggered by:**` — the discovery signals that make it the right flow —
+  plus audience, setup, numbered steps, the closing moment, and known failure
+  modes
+- The template shows the block to copy per area, and says to finish one area
+  before starting a second
+
+### Added
+- `parse_demo_flows()` and `select_demo_flows()` in `packs.py`. The generator
+  matches trigger phrases against the extracted profile's stated pains,
+  environment, and compelling event, and injects **only the flows that fire**.
+  For a five-area vendor this is the difference between a relevant flow and
+  four irrelevant ones burying it
+- `load_pack()` takes optional signals and reports which areas were selected;
+  the run prints them
+- Falls back to the whole file when nothing matches, so poorly chosen triggers
+  degrade to previous behaviour rather than producing an empty plan
+
+Selection runs in code rather than asking the model to choose — the same
+reasoning as section membership and the completeness banner.
+
+Verified against the sample discovery notes: alert/triage/SOC signals select
+Endpoint and XDR alone; a phishing signal selects Email Security; both together
+select both; no match returns everything.
+
 ## 2026-08-14 — MAIOS Daily Brief v0.4.1
 
 **First run against real mail.** Six newsletters downloaded from Gmail as

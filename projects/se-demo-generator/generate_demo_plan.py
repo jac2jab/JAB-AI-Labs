@@ -23,7 +23,7 @@ from datetime import datetime
 from pathlib import Path
 
 from llm import ModelUnavailable, complete
-from packs import available_packs, load_metadata, load_pack
+from packs import available_packs, load_metadata, load_pack, pack_status
 
 BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "output"
@@ -405,7 +405,7 @@ def main() -> None:
         if not notes:
             raise ValueError(f"{args.notes} is empty.")
 
-        knowledge, status = load_pack(args.vendor)
+        status = pack_status(args.vendor)
         metadata = load_metadata(args.vendor)
 
         print(f"Notes:        {args.notes.name} ({len(notes.split())} words)")
@@ -422,6 +422,23 @@ def main() -> None:
 
         found = sum(1 for value in profile.values() if value)
         print(f"              {found}/{len(profile)} fields populated")
+
+        # Narrow the demo flows to the solution areas this opportunity actually
+        # signals. A multi-product vendor has one flow per area, and injecting
+        # all of them buries the relevant one.
+        signals = [
+            str(item)
+            for key in ("stated_pains", "current_environment", "compelling_event")
+            for item in (
+                profile.get(key, [])
+                if isinstance(profile.get(key), list)
+                else [profile.get(key, "")]
+            )
+        ]
+        knowledge, _, selected_areas = load_pack(args.vendor, signals)
+
+        if selected_areas:
+            print(f"              demo flows selected: {', '.join(selected_areas)}")
 
         print("Stage 2 — generating demo plan...")
         plan, backend, failed = generate_plan(profile, knowledge)

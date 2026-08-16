@@ -15,6 +15,7 @@ validating an existing one, and loading it for generation.
 """
 
 import json
+import re
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -47,13 +48,38 @@ SECTIONS: dict[str, dict[str, str]] = {
         "title": "Demo Flows",
         "purpose": "The sequences that actually win deals — not a product tour.",
         "prompts": (
-            "This is the highest-value file in the pack. Write the flows you would\n"
-            "run, in order, with the reason each step earns its place.\n\n"
-            "- What is the opening move that earns attention in the first 3 minutes?\n"
-            "- What is the sequence of screens or actions, numbered?\n"
-            "- Where does the demo usually go wrong, and how do you recover?\n"
-            "- What is the closing moment that makes the decision obvious?\n"
-            "- Which flow do you run for a technical audience vs an executive one?"
+            "The highest-value file in the pack, and the one nobody else can write\n"
+            "for you.\n\n"
+            "**One flow per solution area, not one flow per vendor.** A vendor with\n"
+            "endpoint, email, cloud workload, network, and attack-surface products\n"
+            "has five flows, and which one you run depends on what discovery\n"
+            "surfaced. Copy the block below once per area.\n\n"
+            "Write one area first and stop. A single finished flow is worth more\n"
+            "than five outlines, and you can rerun the generator immediately to see\n"
+            "it used.\n\n"
+            "---\n\n"
+            "## <Solution area, e.g. Endpoint and XDR>\n\n"
+            "**Triggered by:** comma-separated discovery signals that make this the\n"
+            "right flow — the words a customer actually says. These are matched\n"
+            "against the extracted profile to choose the flow, so write what the\n"
+            "customer says, not what you call it internally.\n"
+            "*(e.g. alert fatigue, too many alerts, endpoint, EDR, triage time,\n"
+            "SOC analyst, ransomware)*\n\n"
+            "**Audience:** technical | executive | both  \n"
+            "**Runs in:** ~N minutes\n\n"
+            "### Setup\n"
+            "What has to be true in the demo environment before you start. Seeded\n"
+            "data, a prepared incident, a specific tenant.\n\n"
+            "### Flow\n"
+            "Numbered. For each step: what you show, and why it earns its place in\n"
+            "*this* deal. A step you cannot justify is a step to cut.\n\n"
+            "1. \n"
+            "2. \n"
+            "3. \n\n"
+            "### The moment\n"
+            "The single screen you want them discussing after you leave.\n\n"
+            "### Where it goes wrong\n"
+            "The failure you have actually hit, and how you recover in the room."
         ),
     },
     "competitor_positioning.md": {
@@ -233,11 +259,15 @@ def pack_status(vendor: str) -> dict:
     }
 
 
-def load_pack(vendor: str) -> tuple[str, dict]:
+def load_pack(vendor: str, signals: list[str] | None = None) -> tuple[str, dict, list[str]]:
     """Load a vendor pack's written sections into one knowledge block.
 
     Skeleton sections are skipped rather than passed to the model — template
     questions in the prompt would be answered as if they were content.
+
+    When `signals` are supplied (the opportunity's stated pains and
+    environment), demo flows are narrowed to the solution areas those signals
+    trigger. Returns the knowledge, the pack status, and the areas selected.
     """
     pack_dir = PACKS_DIR / vendor
 
@@ -249,15 +279,81 @@ def load_pack(vendor: str) -> tuple[str, dict]:
 
     status = pack_status(vendor)
     parts = []
+    selected_areas: list[str] = []
 
     generic = PACKS_DIR / "generic" / "se_playbook.md"
     if generic.exists():
-        parts.append(f"# Sales Engineering Playbook (vendor-agnostic)\n\n{generic.read_text(encoding='utf-8')}")
+        parts.append(
+            "# Sales Engineering Playbook (vendor-agnostic)\n\n"
+            + generic.read_text(encoding="utf-8")
+        )
 
     for filename in status["written"]:
-        parts.append((pack_dir / filename).read_text(encoding="utf-8"))
+        text = (pack_dir / filename).read_text(encoding="utf-8")
 
-    return "\n\n---\n\n".join(parts), status
+        if filename == "demo_flows.md" and signals:
+            text, selected_areas = select_demo_flows(text, signals)
+
+        parts.append(text)
+
+    return "\n\n---\n\n".join(parts), status, selected_areas
+
+
+def parse_demo_flows(text: str) -> list[dict]:
+    """Split a demo_flows.md into its per-solution-area flows.
+
+    Each `## ` heading starts a flow. A `**Triggered by:**` line lists the
+    discovery signals that make that flow the right one to run.
+    """
+    flows = []
+
+    for block in re.split(r"^## ", text, flags=re.MULTILINE)[1:]:
+        lines = block.splitlines()
+        area = lines[0].strip()
+
+        match = re.search(r"\*\*Triggered by:\*\*\s*(.+)", block)
+        triggers = (
+            [t.strip().lower() for t in match.group(1).split(",") if t.strip()]
+            if match
+            else []
+        )
+
+        flows.append({"area": area, "triggers": triggers, "text": f"## {block}".rstrip()})
+
+    return flows
+
+
+def select_demo_flows(text: str, signals: list[str]) -> tuple[str, list[str]]:
+    """Choose the flows whose triggers appear in the opportunity's signals.
+
+    Injecting every flow for a multi-product vendor buries the relevant one and
+    burns context on four irrelevant ones. Selection is done here in code rather
+    than by asking the model to pick, for the same reason section membership is:
+    a rule the code enforces holds, and a rule the prompt requests does not.
+
+    Falls back to the whole file when nothing matches, so a pack whose triggers
+    are poorly chosen degrades to previous behaviour instead of going silent.
+    """
+    flows = parse_demo_flows(text)
+
+    if not flows:
+        return text, []
+
+    haystack = " ".join(signals).lower()
+
+    matched = [
+        flow
+        for flow in flows
+        if any(trigger and trigger in haystack for trigger in flow["triggers"])
+    ]
+
+    if not matched:
+        return text, []
+
+    return (
+        "\n\n".join(flow["text"] for flow in matched),
+        [flow["area"] for flow in matched],
+    )
 
 
 def load_metadata(vendor: str) -> dict:
