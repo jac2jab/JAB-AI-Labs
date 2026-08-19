@@ -56,6 +56,29 @@ EMOJI_RE = re.compile("[\U0001F300-\U0001FAFF\u2600-\u26FF\u2700-\u27BF]")
 FRAGMENT_TITLE_RE = re.compile(r"^step\s+\d", re.IGNORECASE)
 
 
+# Content that follows a story but is not part of it: the newsletter's own
+# advertising, its quick-link roundup, and its footer. Without this the last
+# story in an email absorbs everything after it, which reintroduced the exact
+# bug splitting exists to remove — the Flock story scored on `anthropic` from
+# an unrelated quick-link about Decart sitting in its tail.
+TAIL_MARKERS = (
+    "from our partner",
+    "other news & articles",
+    "other news and articles",
+    "advertise in",
+    "was this email forwarded",
+    "unsubscribe",
+)
+
+
+def _trim_tail(body: str) -> str:
+    """Cut a story body where the newsletter's furniture begins."""
+    lowered = body.lower()
+    cuts = [position for position in (lowered.find(m) for m in TAIL_MARKERS) if position > 0]
+
+    return body[: min(cuts)].strip() if cuts else body
+
+
 def _clean_title(title: str) -> str:
     """Strip markdown emphasis and surrounding punctuation from a headline."""
     title = re.sub(r"[*_`]+", "", title).strip()
@@ -78,7 +101,7 @@ def _split_on(pattern: re.Pattern, text: str) -> list[dict]:
         blocks.append(
             {
                 "title": _clean_title(match.group(1)),
-                "body": text[match.end():end].strip(),
+                "body": _trim_tail(text[match.end():end].strip()),
             }
         )
 
@@ -104,7 +127,10 @@ def _split_on_link_marker(text: str) -> list[dict]:
     for index, (start, body_start, title) in enumerate(heads):
         end = heads[index + 1][0] if index + 1 < len(heads) else len(text)
         blocks.append(
-            {"title": _clean_title(title), "body": text[body_start:end].strip()}
+            {
+                "title": _clean_title(title),
+                "body": _trim_tail(text[body_start:end].strip()),
+            }
         )
 
     return blocks
