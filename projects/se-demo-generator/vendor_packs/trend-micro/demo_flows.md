@@ -2,49 +2,37 @@
 
 > The sequences that actually win deals — not a product tour.
 
-<!-- UNWRITTEN -->
-## Answer these, then delete this block and the marker above
+## Endpoint, server, EDR or XDR
 
-The highest-value file in the pack, and the one nobody else can write
-for you.
+**Triggered by:** too many alerts, too many false positives, ability to isolate an endpoint, what users have logged into a device, send a password reset, unsanctioned apps, vulnerability management
 
-**One flow per solution area, not one flow per vendor.** A vendor with
-endpoint, email, cloud workload, network, and attack-surface products
-has five flows, and which one you run depends on what discovery
-surfaced. Copy the block below once per area.
-
-Write one area first and stop. A single finished flow is worth more
-than five outlines, and you can rerun the generator immediately to see
-it used.
-
----
-
-## <Solution area, e.g. Endpoint and XDR>
-
-**Triggered by:** comma-separated discovery signals that make this the
-right flow — the words a customer actually says. These are matched
-against the extracted profile to choose the flow, so write what the
-customer says, not what you call it internally.
-*(e.g. alert fatigue, too many alerts, endpoint, EDR, triage time,
-SOC analyst, ransomware)*
-
-**Audience:** technical | executive | both  
-**Runs in:** ~N minutes
+**Audience:** technical — Manager, Analyst, Administrator; executive — CISO, Deputy CISO, CIO, VP, Director; both — one or more technical plus one or more executive
+**Runs in:** _(not yet supplied)_
 
 ### Setup
-What has to be true in the demo environment before you start. Seeded
-data, a prepared incident, a specific tenant.
+
+Multiple desktops or servers with an agent loaded, users, controls turned on, and workbenches generated with alerts.
 
 ### Flow
-Numbered. For each step: what you show, and why it earns its place in
-*this* deal. A step you cannot justify is a step to cut.
 
-1. 
-2. 
-3. 
+1. Open the platform dashboard to the summary screen.
+2. Explain the information shown and how it relates to endpoints.
+3. Go to the Operations Dashboard to show the prioritized list of items, by criticality, that need attention and what the remediation steps are.
+4. In the Operations Dashboard, click on a Workbench to open an alert.
+5. Take the customer through the workbench, showing the correlations, what the details are, and what remediation steps they can take.
+6. Show how a case can be opened from a workbench.
+7. Show how a workbench status can be updated.
+8. Go to the Endpoint Inventory to show the details of the telemetry collected for each endpoint, and show ease of deployment for new endpoints.
 
 ### The moment
-The single screen you want them discussing after you leave.
+
+Two moments:
+
+1. **The Operations Dashboard** — the prioritized list of items that need attention, the criticality, how many assets are impacted, and the recommended remediation steps.
+2. **The Workbench diagram** — how the telemetry is correlated, the timeline of events that happened, what endpoint, users, or IP were involved and what was done, and what remediation steps can be taken from right there in the workbench (isolate an endpoint, send a password reset, make the user log in again).
 
 ### Where it goes wrong
-The failure you have actually hit, and how you recover in the room.
+
+There is not a workbench for an endpoint incident. Only network, email, and cloud workbenches.
+
+_(Recovery in the room: not yet supplied.)_
