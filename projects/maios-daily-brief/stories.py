@@ -55,6 +55,31 @@ EMOJI_RE = re.compile("[\U0001F300-\U0001FAFF\u2600-\u26FF\u2700-\u27BF]")
 # the Smarter with AI sample; a wider sample will surface more of these.
 FRAGMENT_TITLE_RE = re.compile(r"^step\s+\d", re.IGNORECASE)
 
+# A block that is mostly bullet points is a feature list, a table of contents,
+# or a link roundup rather than a story. Measured across the 36 stories from
+# six real newsletters: every such block carried 5 or more list items, and the
+# most any real story carried was 3.
+LIST_ITEM_RE = re.compile(r"(?m)^\s*(?:\d+\.|\*|-)\s+\S")
+MAX_LIST_ITEMS = 5
+
+# How far back to look for an advertising label. "FROM OUR PARTNERS" sits on
+# its own line immediately above the heading it labels, so an advert's own body
+# never contains it — which is how a ZeroDrift pitch and a Mintlify pitch both
+# scored 5/5 as new capabilities. The marker is a boundary signal, and reading
+# it as a content signal was the bug.
+SPONSOR_LOOKBACK_CHARACTERS = 200
+
+# Only these announce the block beneath them. The wider SPONSOR_MARKERS list
+# also holds "advertise in", which is a solicitation in the newsletter's own
+# footer rather than a label — "Advertise in The Neuron here!" sits directly
+# above the Grok 4.6 headline, and treating it as a label dropped the single
+# most valuable story in the sample.
+SPONSOR_LABEL_MARKERS = (
+    "from our partner",
+    "sponsored by",
+    "presented by",
+)
+
 
 # Content that follows a story but is not part of it: the newsletter's own
 # advertising, its quick-link roundup, and its footer. Without this the last
@@ -91,6 +116,29 @@ def _is_sponsor(title: str, body: str) -> bool:
     return any(marker in head for marker in SPONSOR_MARKERS)
 
 
+def _preceded_by_sponsor(text: str, start: int) -> bool:
+    """True when an advertising label sits just above this block's heading."""
+    window = text[max(0, start - SPONSOR_LOOKBACK_CHARACTERS):start].lower()
+    return any(marker in window for marker in SPONSOR_LABEL_MARKERS)
+
+
+def _is_list_block(body: str) -> bool:
+    """True when a block is a bullet list rather than a story."""
+    return len(LIST_ITEM_RE.findall(body)) >= MAX_LIST_ITEMS
+
+
+def _is_house_promotion(title: str, sender: str) -> bool:
+    """True when a newsletter is advertising itself.
+
+    "New from The Neuron: AI Explained" scored 5/5 twice. A recurring house
+    section names its own publication, and a real story about someone else
+    does not, so the sender's name in the headline is the signal — no list of
+    section names to keep up to date.
+    """
+    sender = sender.strip().lower()
+    return bool(sender) and sender in title.lower()
+
+
 def _split_on(pattern: re.Pattern, text: str) -> list[dict]:
     """Cut text into blocks starting at each match of a headline pattern."""
     matches = list(pattern.finditer(text))
@@ -102,6 +150,7 @@ def _split_on(pattern: re.Pattern, text: str) -> list[dict]:
             {
                 "title": _clean_title(match.group(1)),
                 "body": _trim_tail(text[match.end():end].strip()),
+                "start": match.start(),
             }
         )
 
@@ -130,14 +179,20 @@ def _split_on_link_marker(text: str) -> list[dict]:
             {
                 "title": _clean_title(title),
                 "body": _trim_tail(text[body_start:end].strip()),
+                "start": start,
             }
         )
 
     return blocks
 
 
-def _keep(blocks: list[dict]) -> list[dict]:
-    """Drop table-of-contents stubs, labelled adverts, and tutorial fragments."""
+def _keep(blocks: list[dict], text: str, sender: str) -> list[dict]:
+    """Drop everything that is not a story.
+
+    Advertising is recognized by the label above the heading, not inside the
+    block. Bullet lists and house promotion are recognized structurally. All
+    of it happens before the model is ever asked anything.
+    """
     return [
         block
         for block in blocks
@@ -145,6 +200,9 @@ def _keep(blocks: list[dict]) -> list[dict]:
         and MIN_TITLE_CHARACTERS <= len(block["title"]) <= MAX_TITLE_CHARACTERS
         and not FRAGMENT_TITLE_RE.match(block["title"])
         and not _is_sponsor(block["title"], block["body"])
+        and not _preceded_by_sponsor(text, block["start"])
+        and not _is_list_block(block["body"])
+        and not _is_house_promotion(block["title"], sender)
     ]
 
 
@@ -158,9 +216,10 @@ def split_stories(email: dict) -> list[dict]:
 
     # The three senders here use three different markups, so both structures
     # are tried and whichever recovers more real stories wins.
+    sender = email.get("sender", "")
     candidates = [
-        _keep(_split_on(HEADING_RE, body)),
-        _keep(_split_on_link_marker(body)),
+        _keep(_split_on(HEADING_RE, body), body, sender),
+        _keep(_split_on_link_marker(body), body, sender),
     ]
     kept = max(candidates, key=len)
 
