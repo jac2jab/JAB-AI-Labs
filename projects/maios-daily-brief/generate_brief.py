@@ -16,6 +16,7 @@ from pathlib import Path
 
 from deduplicate import deduplicate
 from ingest import load_emails
+from stories import split_all
 from summarizer import summarize_all
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -263,7 +264,17 @@ def main() -> None:
             print(f"No email records found in {args.source}")
             return
 
-        enriched = enrich_emails(emails)
+        # The baseline is the whole newsletter as it arrived, measured before
+        # anything is split or dropped. That is what a person would have had to
+        # read. v0.4.1 measured the truncated 4,000-character body instead,
+        # which understated the input by 58%.
+        input_words = sum(word_count(e.get("body", "")) for e in emails)
+
+        # A roundup is not one item. Split first so relevance and summarization
+        # both operate on a single story's own text.
+        items = split_all(emails)
+
+        enriched = enrich_emails(items)
 
         deduplicated = deduplicate(enriched)
         duplicates_merged = len(enriched) - len(deduplicated)
@@ -273,19 +284,16 @@ def main() -> None:
 
         summarized, backend = summarize_all(selected)
 
-        # The reading-time target is about words, not items — an inbox of
-        # long newsletters and a brief of one-line summaries are not
-        # comparable by item count alone.
-        input_words = sum(word_count(e.get("body", "")) for e in emails)
         output_words = sum(word_count(e.get("summary", "")) for e in summarized)
 
         metrics = {
-            "input": len(emails),
+            "emails": len(emails),
+            "input": len(items),
             "duplicates_merged": duplicates_merged,
             "filtered_out": filtered_out,
             "final": len(summarized),
             "reduction_percent": round(
-                100 * (len(emails) - len(summarized)) / len(emails)
+                100 * (len(items) - len(summarized)) / len(items)
             ),
             "input_words": input_words,
             "output_words": output_words,
@@ -300,7 +308,8 @@ def main() -> None:
         output_file = save_brief(brief, args.source)
 
         print(f"Source:              {source_label}")
-        print(f"Items in:            {metrics['input']}")
+        print(f"Emails in:           {metrics['emails']}")
+        print(f"Stories after split: {metrics['input']}")
         print(f"Duplicates merged:  -{metrics['duplicates_merged']}")
         print(f"Below relevance:    -{metrics['filtered_out']}")
         print(f"Items out:           {metrics['final']}")

@@ -21,9 +21,13 @@ import mailbox
 import re
 from pathlib import Path
 
-# Keep whole newsletters out of the model prompt; the opening is enough to
-# summarize from and bounds both latency and memory.
-MAX_BODY_CHARACTERS = 4000
+# The email body is no longer truncated. Capping it at 4,000 characters
+# discarded 58% of every roundup (5,298 of 9,201 words across the six real
+# newsletters), and in one case discarded the story named in the subject line
+# while keeping its table-of-contents entry — so the summarizer wrote about a
+# headline it had no article for. Bounding the model prompt is now stories.py's
+# job, which caps each story separately once the email has been split.
+MAX_BODY_CHARACTERS = None
 
 # Newsletters pad the inbox preview snippet with hundreds of invisible
 # characters. Unescaped they are silent; escaped as &#8204; they flood the
@@ -72,7 +76,7 @@ def _clean(text: str) -> str:
     text = re.sub(r"\n[ \t]*\n[ \t]*\n+", "\n\n", text)
     text = text.strip()
 
-    if len(text) <= MAX_BODY_CHARACTERS:
+    if MAX_BODY_CHARACTERS is None or len(text) <= MAX_BODY_CHARACTERS:
         return text
 
     return text[:MAX_BODY_CHARACTERS].rsplit(" ", 1)[0] + "..."

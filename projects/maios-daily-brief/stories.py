@@ -143,7 +143,7 @@ def split_stories(email: dict) -> list[dict]:
         # email as a single story rather than dropping it.
         return [
             {
-                "title": email.get("subject", ""),
+                "subject": email.get("subject", ""),
                 "body": body[:MAX_STORY_CHARACTERS],
                 "sender": email.get("sender", ""),
                 "parent_subject": email.get("subject", ""),
@@ -153,7 +153,7 @@ def split_stories(email: dict) -> list[dict]:
 
     return [
         {
-            "title": block["title"],
+            "subject": block["title"],
             "body": block["body"][:MAX_STORY_CHARACTERS],
             "sender": email.get("sender", ""),
             "parent_subject": email.get("subject", ""),
