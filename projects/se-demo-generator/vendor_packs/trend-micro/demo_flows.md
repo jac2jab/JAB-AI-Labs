@@ -4,7 +4,7 @@
 
 ## Endpoint, server, EDR or XDR
 
-**Triggered by:** too many alerts, too many false positives, ability to isolate an endpoint, what users have logged into a device, send a password reset, unsanctioned apps, vulnerability management
+**Triggered by:** alert, false positive, isolate, logged in, password reset, unsanctioned, vulnerab, endpoint, edr, triage, soc analyst, soc lead
 
 **Audience:** technical — Manager, Analyst, Administrator; executive — CISO, Deputy CISO, CIO, VP, Director; both — one or more technical plus one or more executive
 **Runs in:** _(not yet supplied)_
