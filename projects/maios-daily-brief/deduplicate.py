@@ -11,6 +11,8 @@ explain itself: every merge reports its similarity score and the terms the
 items had in common.
 """
 
+from collections.abc import Callable
+
 # Words too common to indicate that two items are about the same story.
 STOPWORDS = frozenset(
     """
@@ -62,11 +64,23 @@ def similarity(first: set[str], second: set[str]) -> float:
     return len(first & second) / min(len(first), len(second))
 
 
-def deduplicate(emails: list[dict], threshold: float = SIMILARITY_THRESHOLD) -> list[dict]:
+def deduplicate(
+    emails: list[dict],
+    threshold: float = SIMILARITY_THRESHOLD,
+    score_pair: Callable[[int, int], float] | None = None,
+    method: str = "overlap coefficient",
+) -> list[dict]:
     """Collapse near-duplicate items, keeping the highest-priority one.
 
     Each surviving item gains a ``duplicates`` list describing what was merged
     into it. Items with too few content words to compare are always kept.
+
+    ``score_pair`` lets a caller supply a different comparison — semantic
+    similarity from embeddings, in particular. Lexical overlap cannot reach two
+    write-ups of one story that share little vocabulary, and on real newsletters
+    it demonstrably does not: the Grok 4.6 duplicate scored 0.250 while an
+    unrelated pair scored 0.263. The merging logic is the same either way, so
+    only the comparison is swapped.
     """
     ranked = sorted(
         enumerate(emails),
@@ -75,6 +89,10 @@ def deduplicate(emails: list[dict], threshold: float = SIMILARITY_THRESHOLD) -> 
     )
 
     token_sets = {index: content_tokens(email) for index, email in enumerate(emails)}
+
+    if score_pair is None:
+        def score_pair(first: int, second: int) -> float:
+            return similarity(token_sets[first], token_sets[second])
 
     merged_into_another: set[int] = set()
     survivors = []
@@ -97,7 +115,7 @@ def deduplicate(emails: list[dict], threshold: float = SIMILARITY_THRESHOLD) -> 
             if len(token_sets[other_index]) < MINIMUM_TOKENS:
                 continue
 
-            score = similarity(token_sets[index], token_sets[other_index])
+            score = score_pair(index, other_index)
 
             if score < threshold:
                 continue
@@ -109,6 +127,7 @@ def deduplicate(emails: list[dict], threshold: float = SIMILARITY_THRESHOLD) -> 
                     "sender": other_email.get("sender", "Unknown"),
                     "subject": other_email.get("subject", "No subject"),
                     "similarity": round(score, 2),
+                    "method": method,
                     "shared_terms": shared[:6],
                 }
             )

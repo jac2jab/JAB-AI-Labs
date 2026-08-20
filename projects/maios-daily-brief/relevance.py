@@ -29,12 +29,18 @@ when it changes what he would build, or what he would say to a customer.
 from __future__ import annotations
 
 import json
+import os
 import re
 import urllib.error
 import urllib.request
 
-OLLAMA_HOST = "http://localhost:11434"
-OLLAMA_MODEL = "llama3.2"
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+
+# Overridable so a larger model can be measured against the same stories
+# without editing code. llama3.2 is 3B and its judgment is visibly unsteady:
+# it classified the same Grok 4.6 launch as a 5/5 capability from one
+# newsletter and 2/5 business news from another.
+OLLAMA_MODEL = os.environ.get("MAIOS_RELEVANCE_MODEL", "llama3.2")
 
 MAX_ANSWER_TOKENS = 200
 REQUEST_TIMEOUT_SECONDS = 180
