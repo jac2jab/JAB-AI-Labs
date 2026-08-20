@@ -32,6 +32,11 @@ OUTPUT_DIR = BASE_DIR / "output"
 BASELINE_PRIORITY = 3
 MINIMUM_PRIORITY = 4
 
+# A roundup carries six to eight stories and three or four of them are worth
+# reading. Capping per issue also stops one prolific newsletter from filling a
+# brief assembled from ten of them.
+MAX_ITEMS_PER_ISSUE = 4
+
 
 CATEGORY_KEYWORDS = {
     "Career": [
@@ -174,6 +179,32 @@ def enrich_emails(
     return enriched, fell_back
 
 
+def cap_per_issue(items: list[dict], limit: int) -> list[dict]:
+    """Keep only the highest-scoring stories from each newsletter issue.
+
+    A relevance floor treats every newsletter as one pool, so a single issue
+    with eight strong stories can crowd out every other sender. Capping per
+    issue keeps the brief representative of the morning's mail rather than of
+    whichever newsletter wrote the most that day.
+    """
+    if limit <= 0:
+        return items
+
+    kept: list[dict] = []
+    per_issue: dict[str, int] = {}
+
+    for item in sorted(items, key=lambda i: -i.get("priority", 0)):
+        issue = item.get("parent_subject") or item.get("sender", "")
+
+        if per_issue.get(issue, 0) >= limit:
+            continue
+
+        per_issue[issue] = per_issue.get(issue, 0) + 1
+        kept.append(item)
+
+    return kept
+
+
 def select_relevant_emails(
     emails: list[dict],
     minimum_priority: int = MINIMUM_PRIORITY,
@@ -207,6 +238,8 @@ def generate_markdown(
         f"{'story' if metrics['duplicates_merged'] == 1 else 'stories'} consolidated",
         f"- {metrics['filtered_out']} items below the relevance floor "
         f"(priority < {MINIMUM_PRIORITY})",
+        f"- {metrics['capped_out']} items beyond the top "
+        f"{metrics['per_issue']} of their issue",
         f"- {metrics['input_words']:,} words in → {metrics['output_words']:,} words out",
         f"- Source: {source}",
         f"- Relevance scored by `{scorer_label}`",
@@ -307,6 +340,15 @@ def main() -> None:
             f".mbox archive. Defaults to {INPUT_FILE.name}."
         ),
     )
+    parser.add_argument(
+        "--per-issue",
+        type=int,
+        default=MAX_ITEMS_PER_ISSUE,
+        help=(
+            "Keep at most this many stories from each newsletter issue. "
+            f"Defaults to {MAX_ITEMS_PER_ISSUE}; 0 disables the cap."
+        ),
+    )
     args = parser.parse_args()
 
     try:
@@ -333,8 +375,11 @@ def main() -> None:
         deduplicated = deduplicate(enriched)
         duplicates_merged = len(enriched) - len(deduplicated)
 
-        selected = select_relevant_emails(deduplicated)
-        filtered_out = len(deduplicated) - len(selected)
+        above_floor = select_relevant_emails(deduplicated)
+        filtered_out = len(deduplicated) - len(above_floor)
+
+        selected = cap_per_issue(above_floor, args.per_issue)
+        capped_out = len(above_floor) - len(selected)
 
         summarized, backend = summarize_all(selected)
 
@@ -352,6 +397,8 @@ def main() -> None:
             "input_words": input_words,
             "output_words": output_words,
             "scored_by_fallback": scored_by_fallback,
+            "capped_out": capped_out,
+            "per_issue": args.per_issue,
             "words_saved_percent": (
                 round(100 * (input_words - output_words) / input_words)
                 if input_words
@@ -369,6 +416,7 @@ def main() -> None:
         print(f"Stories after split: {metrics['input']}")
         print(f"Duplicates merged:  -{metrics['duplicates_merged']}")
         print(f"Below relevance:    -{metrics['filtered_out']}")
+        print(f"Beyond top {args.per_issue}/issue:  -{metrics['capped_out']}")
         print(f"Items out:           {metrics['final']}")
         print(f"Item reduction:      {metrics['reduction_percent']}%")
         print(

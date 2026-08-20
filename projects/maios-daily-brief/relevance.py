@@ -39,9 +39,14 @@ OLLAMA_MODEL = "llama3.2"
 MAX_ANSWER_TOKENS = 200
 REQUEST_TIMEOUT_SECONDS = 180
 
-# Deterministic, so a rerun of the same mail produces the same brief and a
-# comparison against the keyword baseline means something.
+# temperature 0 alone is NOT reproducible here. Two identical runs over the same
+# 25 stories disagreed on two of them - "Grok takes on OpenAI in coding" and
+# "SpaceXAI launches Grok Bot" scored 5/5 in one run and below the floor in the
+# next - because Ollama seeds each request randomly unless told otherwise. A
+# fixed seed is what actually makes a rerun comparable, and every measurement
+# in this project depends on that.
 TEMPERATURE = 0
+SEED = 42
 
 # Measured across the 36 stories from six real newsletters: every link roundup
 # and tools list carried 5 or more bracketed links, and the highest a real
@@ -151,7 +156,11 @@ def _ask_ollama(story: dict) -> dict:
             # pathologically slow on llama3.2 in the SE generator; JSON mode
             # fixes the failure that actually occurs, malformed output.
             "format": "json",
-            "options": {"num_predict": MAX_ANSWER_TOKENS, "temperature": TEMPERATURE},
+            "options": {
+                "num_predict": MAX_ANSWER_TOKENS,
+                "temperature": TEMPERATURE,
+                "seed": SEED,
+            },
         }
     ).encode("utf-8")
 
