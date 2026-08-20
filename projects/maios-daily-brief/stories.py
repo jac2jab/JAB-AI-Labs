@@ -40,7 +40,27 @@ SPONSOR_MARKERS = (
 )
 
 # Markdown-style headings: The Neuron uses "# ", Smarter with AI uses "## ".
+# Deliberately not #{4,6}: Superhuman labels its sections "##### **TODAY IN
+# AI**", which are banners rather than stories.
 HEADING_RE = re.compile(r"^[ \t]{0,3}#{1,3}[ \t]+(\S.*?)[ \t]*$", re.MULTILINE)
+
+# Superhuman numbers its lead stories in bold and runs the body straight on
+# from the colon:
+#
+#     **1. Stripe becomes one of the first non-AI companies ...: **In an
+#     official letter to investors ...
+#
+# These sit above the first markdown heading, so an email split on headings
+# alone loses all of them - including the story the email is named after.
+#
+# The trailing lookahead is what separates a story headline from a tutorial
+# step. Futurepedia numbers the steps of one article the same way -
+# "**1. Turn on memory first**" - but the bold span ends the line, while
+# Superhuman's headline runs straight into its story on the same line. Without
+# it, one Futurepedia article fragmented into nine "stories".
+NUMBERED_ITEM_RE = re.compile(
+    r"^\*\*\d+\.[ \t]*([^*]{10,120}?)[ \t]*:?[ \t]*\*\*(?=[ \t]*\S)", re.MULTILINE
+)
 
 # Techpresso trails each story headline with the link text "LINK", but the
 # headline sits mid-line: the previous story's last sentence runs straight into
@@ -156,26 +176,21 @@ def _is_house_promotion(title: str, sender: str) -> bool:
     return bool(sender) and sender in title.lower()
 
 
-def _split_on(pattern: re.Pattern, text: str) -> list[dict]:
-    """Cut text into blocks starting at each match of a headline pattern."""
-    matches = list(pattern.finditer(text))
-    blocks = []
-
-    for index, match in enumerate(matches):
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
-        blocks.append(
-            {
-                "title": _clean_title(match.group(1)),
-                "body": _trim_tail(text[match.end():end].strip()),
-                "start": match.start(),
-            }
-        )
-
-    return blocks
+def _heads_from_pattern(pattern: re.Pattern, text: str) -> list[dict]:
+    """Headline positions from a regex whose first group is the title."""
+    return [
+        {
+            "start": match.start(),
+            "body_start": match.end(),
+            "title": _clean_title(match.group(1)),
+            "sponsored": False,
+        }
+        for match in pattern.finditer(text)
+    ]
 
 
-def _split_on_link_marker(text: str) -> list[dict]:
-    """Cut Techpresso-style text where an emoji-led headline precedes "LINK"."""
+def _heads_from_link_marker(text: str) -> list[dict]:
+    """Techpresso headlines: an emoji-led title immediately before "LINK"."""
     heads = []
 
     for match in LINK_MARKER_RE.finditer(text):
@@ -186,25 +201,20 @@ def _split_on_link_marker(text: str) -> list[dict]:
             continue
 
         start = window_start + emojis[-1].start()
-        heads.append((start, match.end(), text[start:match.start()]))
-
-    blocks = []
-
-    for index, (start, body_start, title) in enumerate(heads):
-        end = heads[index + 1][0] if index + 1 < len(heads) else len(text)
-        blocks.append(
+        heads.append(
             {
-                "title": _clean_title(title),
-                "body": _trim_tail(text[body_start:end].strip()),
                 "start": start,
+                "body_start": match.end(),
+                "title": _clean_title(text[start:match.start()]),
+                "sponsored": False,
             }
         )
 
-    return blocks
+    return heads
 
 
-def _split_on_caps_marker(text: str) -> list[dict]:
-    """Cut TLDR-style text where an upper-case headline precedes its kind marker."""
+def _heads_from_caps_marker(text: str) -> list[dict]:
+    """TLDR headlines: an upper-case title immediately before its kind marker."""
     heads = []
 
     for match in TLDR_MARKER_RE.finditer(text):
@@ -222,28 +232,52 @@ def _split_on_caps_marker(text: str) -> list[dict]:
 
             start -= 1
 
-        title = _clean_title(" ".join(text[start:match.start()].split()))
+        heads.append(
+            {
+                "start": start,
+                "body_start": match.end(),
+                "title": _clean_title(" ".join(text[start:match.start()].split())),
+                # A (SPONSOR) block is still a boundary — the story above it
+                # ends here — but is never kept as a story itself.
+                "sponsored": match.group(1).strip() == TLDR_SPONSOR_KIND,
+            }
+        )
 
-        if match.group(1).strip() == TLDR_SPONSOR_KIND:
-            # Labelled advertising. Recorded as a head so the story before it
-            # still ends here, but never kept as a story itself.
-            heads.append((start, match.end(), title, True))
+    return heads
+
+
+def _blocks_from_heads(heads: list[dict], text: str) -> list[dict]:
+    """Cut the text at every headline found, whichever pattern found it.
+
+    One newsletter can use more than one structure at once. Superhuman numbers
+    its three lead stories in bold and gives its feature stories markdown
+    headings, so choosing a single winning pattern per email lost whichever set
+    came second — here the three most newsworthy items, including the story the
+    email is named after. Merging the boundaries keeps both.
+    """
+    ordered = sorted(heads, key=lambda head: head["start"])
+    merged: list[dict] = []
+
+    for head in ordered:
+        # Two patterns finding the same headline produce two heads a few
+        # characters apart; keep the first and drop the echo.
+        if merged and head["start"] - merged[-1]["start"] < MIN_TITLE_CHARACTERS:
             continue
 
-        heads.append((start, match.end(), title, False))
+        merged.append(head)
 
     blocks = []
 
-    for index, (start, body_start, title, sponsored) in enumerate(heads):
-        if sponsored:
+    for index, head in enumerate(merged):
+        if head["sponsored"]:
             continue
 
-        end = heads[index + 1][0] if index + 1 < len(heads) else len(text)
+        end = merged[index + 1]["start"] if index + 1 < len(merged) else len(text)
         blocks.append(
             {
-                "title": title,
-                "body": _trim_tail(text[body_start:end].strip()),
-                "start": start,
+                "title": head["title"],
+                "body": _trim_tail(text[head["body_start"]:end].strip()),
+                "start": head["start"],
             }
         )
 
@@ -281,12 +315,16 @@ def split_stories(email: dict) -> list[dict]:
     # The three senders here use three different markups, so both structures
     # are tried and whichever recovers more real stories wins.
     sender = email.get("sender", "")
-    candidates = [
-        _keep(_split_on(HEADING_RE, body), body, sender),
-        _keep(_split_on_link_marker(body), body, sender),
-        _keep(_split_on_caps_marker(body), body, sender),
-    ]
-    kept = max(candidates, key=len)
+
+    # Every structure is tried and the boundaries are pooled, because a single
+    # newsletter can use two at once.
+    heads = (
+        _heads_from_pattern(HEADING_RE, body)
+        + _heads_from_pattern(NUMBERED_ITEM_RE, body)
+        + _heads_from_link_marker(body)
+        + _heads_from_caps_marker(body)
+    )
+    kept = _keep(_blocks_from_heads(heads, body), body, sender)
 
     if len(kept) < 2:
         # Not a roundup, or a structure this does not understand. Treat the
