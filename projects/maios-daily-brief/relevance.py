@@ -86,13 +86,19 @@ new_or_changed_capability
     what to use or how to build it.
 
 security_or_privacy_development
-    A vulnerability, breach, attack technique, surveillance practice, or data
-    handling change that would alter his technical advice to a customer about
-    risk.
+    A vulnerability, breach, attack technique, malware, or a change in how a
+    product actually handles data, that would alter his technical advice to a
+    customer about risk. The story has to describe a technical threat or a
+    technical safeguard.
 
 business_or_industry_news
-    Funding, valuations, executive moves, lawsuits, regulation, partnerships,
-    licensing deals, market share, or user counts.
+    Funding, valuations, executive moves, lawsuits, court rulings, antitrust
+    and regulatory decisions, partnerships, licensing deals, market share, or
+    user counts.
+
+    A story about what a company is required to do by a court or a regulator,
+    or about who has agreed to work with whom, belongs here even when its
+    subject matter touches security or privacy.
 
 consumer_product_news
     A feature for ordinary consumers with no bearing on how enterprise AI
