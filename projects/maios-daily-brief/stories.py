@@ -51,6 +51,20 @@ HEADING_RE = re.compile(r"^[ \t]{0,3}#{1,3}[ \t]+(\S.*?)[ \t]*$", re.MULTILINE)
 LINK_MARKER_RE = re.compile(r"\s+LINK\b")
 EMOJI_RE = re.compile("[\U0001F300-\U0001FAFF\u2600-\u26FF\u2700-\u27BF]")
 
+# TLDR, TLDR AI, and TLDR Data ship hard-wrapped plain text and mark every
+# headline with its kind and a footnote number:
+#
+#     EARLY OUTPUTS OF MUSE VIDEO MODEL FROM META (3 MINUTE READ) [7]
+#     ROUTER (WEBSITE) [8]
+#     MUCH REAL WORK IT DOES (SPONSOR) [4]
+#
+# The headline is upper case and wraps across lines, so the marker is found
+# first and the title read backwards from it — the same approach Techpresso
+# needed. (SPONSOR) labels the advert in the same breath, which is the
+# cleanest sponsor signal any of these senders provides.
+TLDR_MARKER_RE = re.compile(r"\(([A-Z0-9][A-Z0-9 ]{1,28})\)\s*\[\d+\]")
+TLDR_SPONSOR_KIND = "SPONSOR"
+
 # Numbered steps are parts of one tutorial, not separate stories. Tuned against
 # the Smarter with AI sample; a wider sample will surface more of these.
 FRAGMENT_TITLE_RE = re.compile(r"^step\s+\d", re.IGNORECASE)
@@ -105,8 +119,11 @@ def _trim_tail(body: str) -> str:
 
 
 def _clean_title(title: str) -> str:
-    """Strip markdown emphasis and surrounding punctuation from a headline."""
+    """Strip markdown emphasis, footnote references, and edge punctuation."""
     title = re.sub(r"[*_`]+", "", title).strip()
+    # TLDR ends the previous story with a footnote reference like "[20]!" that
+    # the backward walk picks up ahead of the real headline.
+    title = re.sub(r"^\s*\[\d+\][!?.]?\s*", "", title)
     return title.strip(" .:-—")
 
 
@@ -186,6 +203,53 @@ def _split_on_link_marker(text: str) -> list[dict]:
     return blocks
 
 
+def _split_on_caps_marker(text: str) -> list[dict]:
+    """Cut TLDR-style text where an upper-case headline precedes its kind marker."""
+    heads = []
+
+    for match in TLDR_MARKER_RE.finditer(text):
+        limit = max(0, match.start() - MAX_TITLE_CHARACTERS)
+        start = match.start()
+
+        # Walk back over the upper-case headline, stopping at the first
+        # lower-case letter, which belongs to the previous story's prose, and
+        # at a blank line. TLDR puts its section banners ("HEADLINES &
+        # LAUNCHES") in upper case too, a paragraph above the headline, so
+        # without the blank-line stop the banner is swallowed into the title.
+        while start > limit and not text[start - 1].islower():
+            if text[start - 1] == "\n" and text[limit:start - 1].rstrip(" \t").endswith("\n"):
+                break
+
+            start -= 1
+
+        title = _clean_title(" ".join(text[start:match.start()].split()))
+
+        if match.group(1).strip() == TLDR_SPONSOR_KIND:
+            # Labelled advertising. Recorded as a head so the story before it
+            # still ends here, but never kept as a story itself.
+            heads.append((start, match.end(), title, True))
+            continue
+
+        heads.append((start, match.end(), title, False))
+
+    blocks = []
+
+    for index, (start, body_start, title, sponsored) in enumerate(heads):
+        if sponsored:
+            continue
+
+        end = heads[index + 1][0] if index + 1 < len(heads) else len(text)
+        blocks.append(
+            {
+                "title": title,
+                "body": _trim_tail(text[body_start:end].strip()),
+                "start": start,
+            }
+        )
+
+    return blocks
+
+
 def _keep(blocks: list[dict], text: str, sender: str) -> list[dict]:
     """Drop everything that is not a story.
 
@@ -220,6 +284,7 @@ def split_stories(email: dict) -> list[dict]:
     candidates = [
         _keep(_split_on(HEADING_RE, body), body, sender),
         _keep(_split_on_link_marker(body), body, sender),
+        _keep(_split_on_caps_marker(body), body, sender),
     ]
     kept = max(candidates, key=len)
 
