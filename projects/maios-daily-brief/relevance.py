@@ -36,11 +36,15 @@ import urllib.request
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 
-# Overridable so a larger model can be measured against the same stories
-# without editing code. llama3.2 is 3B and its judgment is visibly unsteady:
-# it classified the same Grok 4.6 launch as a 5/5 capability from one
-# newsletter and 2/5 business news from another.
-OLLAMA_MODEL = os.environ.get("MAIOS_RELEVANCE_MODEL", "llama3.2")
+# llama3.1:8b, not the 3B llama3.2 the summarizer uses. Measured on six stories
+# whose correct category is not in dispute, chosen because llama3.2's answers on
+# them were already known: 8B got 5 of 6, 3B got 3 of 6, and nothing that 3B had
+# right regressed. It costs about 33s per story against roughly 20s, which is
+# the trade being made.
+#
+# Overridable so the next model can be measured the same way without a code
+# change.
+OLLAMA_MODEL = os.environ.get("MAIOS_RELEVANCE_MODEL", "llama3.1:8b")
 
 MAX_ANSWER_TOKENS = 200
 REQUEST_TIMEOUT_SECONDS = 180
