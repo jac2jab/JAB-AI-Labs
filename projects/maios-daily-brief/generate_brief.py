@@ -253,8 +253,9 @@ def generate_markdown(
     if metrics.get("scored_by_fallback"):
         lines.insert(
             -1,
-            f"- **{metrics['scored_by_fallback']} items fell back to keyword "
-            "scoring** and are not model-scored",
+            f"- **{metrics['scored_by_fallback']} "
+            f"{'item' if metrics['scored_by_fallback'] == 1 else 'items'} fell "
+            "back to keyword scoring** and are not model-scored",
         )
 
     categories: dict[str, list[dict]] = {}
