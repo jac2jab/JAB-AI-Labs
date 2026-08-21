@@ -82,7 +82,11 @@ EMOJI_RE = re.compile("[\U0001F300-\U0001FAFF\u2600-\u26FF\u2700-\u27BF]")
 # first and the title read backwards from it — the same approach Techpresso
 # needed. (SPONSOR) labels the advert in the same breath, which is the
 # cleanest sponsor signal any of these senders provides.
-TLDR_MARKER_RE = re.compile(r"\(([A-Z0-9][A-Z0-9 ]{1,28})\)\s*\[\d+\]")
+# The hard wrap can fall inside the marker itself - "(3 MINUTE\nREAD) [10]" -
+# so the kind has to be allowed to span lines. Without this the headline is not
+# seen at all and the story above it absorbs the whole next story: the mRNA
+# cancer vaccine item swallowed Unitree's humanoid robots.
+TLDR_MARKER_RE = re.compile(r"\(([A-Z0-9][A-Z0-9\s]{1,28})\)\s*\[\d+\]")
 TLDR_SPONSOR_KIND = "SPONSOR"
 
 # Numbered steps are parts of one tutorial, not separate stories. Tuned against
@@ -238,8 +242,9 @@ def _heads_from_caps_marker(text: str) -> list[dict]:
                 "body_start": match.end(),
                 "title": _clean_title(" ".join(text[start:match.start()].split())),
                 # A (SPONSOR) block is still a boundary — the story above it
-                # ends here — but is never kept as a story itself.
-                "sponsored": match.group(1).strip() == TLDR_SPONSOR_KIND,
+                # ends here — but is never kept as a story itself. The kind is
+                # whitespace-normalized because the wrap can land inside it.
+                "sponsored": " ".join(match.group(1).split()) == TLDR_SPONSOR_KIND,
             }
         )
 
