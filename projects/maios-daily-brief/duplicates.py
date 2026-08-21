@@ -30,12 +30,26 @@ import urllib.request
 import embeddings
 import relevance
 
-# Deliberately below the point where cosine alone is safe. Stage one is meant to
-# over-collect: measured on real newsletters the true Grok 4.6 pair sits at
-# 0.793, beneath false pairs at 0.805 and 0.819, so a threshold high enough to
-# be trustworthy on its own would already have discarded it. Precision is stage
-# two's job.
-CANDIDATE_THRESHOLD = 0.75
+# Set by classifying all 42 confirmations from a full run over 149 correctly
+# split stories. Every merge at 0.83 or above was right — 15 of 15, no false
+# positives. Below it precision collapses to roughly 4 correct out of 27, and
+# the wrong ones are all the same mistake: the model confirming topical
+# relatedness rather than event identity, justified as "both mention OpenAI",
+# "all three companies released new models", "both discuss backlash against AI".
+#
+# The prompt lists that exact failure as a non-match and the model does it
+# anyway, which is the fourth time in this project a prompt-level instruction
+# has failed to hold where a code-level rule would not have.
+#
+# The cost is real and worth stating: this discards four merges that were
+# correct, including the Techpresso/Neuron Grok 4.6 pair at 0.793 that motivated
+# semantic deduplication in the first place. Showing one story twice is a
+# visible error; merging two stories wrongly hides one completely.
+#
+# A rare-shared-entity gate was tried first and failed — all twelve test pairs
+# passed it, correct and incorrect alike, because a cancer vaccine story and a
+# robotics story can share rare tokens when one has absorbed the other.
+CANDIDATE_THRESHOLD = 0.83
 
 # A guard, not a tuning knob. Each candidate costs a model call of roughly 25
 # seconds, so a pathological run is capped rather than left to run for hours.
