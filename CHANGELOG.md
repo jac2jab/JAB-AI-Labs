@@ -1,5 +1,121 @@
 # JAB AI Labs Changelog
 
+## 2026-08-20 — MAIOS Daily Brief v0.5 (in progress): stories, not emails
+
+v0.4.1 documented the problem: keyword relevance scoring is wrong on roundup
+newsletters. Fixing it turned out to need a structural change first, and
+running against real mail found something worse than the scoring bug.
+
+**A newsletter is not one item.** The pipeline now splits each email into its
+individual stories before anything else runs, so relevance and summarization
+both operate on a single story's own text.
+
+### Added
+- `stories.py` — splits an email into its stories. Four structures, each found
+  by running real mail and watching the previous one fail: markdown headings,
+  Techpresso's emoji-led headlines before `LINK`, TLDR's upper-case headlines
+  before a `(3 MINUTE READ) [7]` marker, and Superhuman's bold-numbered leads.
+  Boundaries from every pattern are pooled rather than competing, because one
+  newsletter can use two at once
+- `relevance.py` — model-assisted relevance using Jason's own criterion: an item
+  matters when it changes what he would build or what he would say to a
+  customer. The model picks one of five categories and **never emits a score**;
+  the arithmetic is a dict in code
+- `embeddings.py` — local `nomic-embed-text`, for duplicates that share no
+  vocabulary
+- `duplicates.py` — two-stage duplicate detection: embeddings narrow 11,026
+  possible pairs to a handful of candidates, then the model answers one narrow
+  question per candidate — same event, yes or no. It returns a boolean, never a
+  score
+- `compare_scoring.py` — runs keyword and model scoring over the same stories
+  and prints the disagreements, so "the model is better" is a measurement
+- `--per-issue` — keep at most N stories from each newsletter issue, default 4
+
+### Changed
+- **The reading-reduction baseline is now the whole newsletter as it arrived.**
+  `ingest.py` capped every body at 4,000 characters, so the 3,903 words behind
+  v0.4.1's 98% claim was 58% short of the mail that actually landed. Bounding
+  the model prompt is now the splitter's job, per story
+- Relevance defaults to `llama3.1:8b` rather than the 3B `llama3.2`. Measured on
+  six stories whose correct category is not in dispute: 5 of 6 against 3 of 6,
+  with no regression on the two the smaller model already had right
+- The brief names its relevance scorer, as it already named its summarizer, and
+  reports in bold how many items fell back to keyword scoring
+
+### Fixed — the most serious thing found in this project so far
+- **A summary was written from a headline whose article had been discarded.**
+  The v0.4.1 brief led with "Apple may pay publishers for Siri news … *if a
+  proposed deal is approved, potentially altering how AI-powered virtual
+  assistants are monetized*". The Apple story began at character 4,054, past the
+  body cap. The only Apple text the model received was the table-of-contents
+  line. The real article — a pay-as-you-go model against a nine-figure budget,
+  per a Wall Street Journal report — was never in the prompt. That is
+  fabrication in published output, and splitting is what fixes it
+
+### Fixed — three instances of one pattern
+A story absorbing text that is not its own, with the absorbed vocabulary then
+driving a decision. Each was invisible until something downstream produced an
+absurd result:
+- The 4,000-character body cap discarded 58% of every roundup
+- The last story in an email ran to the end of the file, so it swallowed the
+  sponsor block, quick links, and footer. A story about police misuse of licence
+  plate data scored 4/5 on `anthropic`, a word appearing only in an unrelated
+  quick link in its tail
+- A TLDR headline whose hard wrap fell inside its own marker —
+  `(3 MINUTE\nREAD)` — was never seen as a boundary, so an mRNA cancer vaccine
+  story absorbed a story about humanoid robots
+
+### Enforced in code rather than asked of a model
+Every one of these was tried as a prompt first and failed:
+- **Advertising is labelled from above, not inside.** `FROM OUR PARTNERS` sits
+  on the line before the heading it labels, so searching inside the block could
+  never find it. One advert was headed `Secondary ad here`
+- **Bullet lists are not stories.** Every feature list, table of contents, and
+  link roundup carried 5 or more list items; the most any real story carried
+  was 3
+- **House promotion names its own publication.** A recurring section names its
+  own newsletter and a story about someone else does not
+- **Scores are computed, never generated.** A 3B model does not hold a
+  calibrated 1–5 scale
+- **Furniture is detected structurally.** Asked as a yes/no beside the relevance
+  questions, the model's answers moved together: one prompt made everything
+  furniture and nothing relevant, the next made everything relevant and nothing
+  furniture
+
+### Measured
+- Corpus: **28 emails from 13 newsletters, 39,276 words → 149 stories**. 10 of
+  13 senders split
+- Keyword scoring keeps 5 of 25 stories; model scoring keeps 10. The keyword
+  five still include a user-count story scoring 4/5 on the word `openai`, and
+  still miss both Grok launches, an autonomous agent intrusion, and a remote
+  hijack vulnerability
+- Splitting alone took the Apple/Siri item from 5/5 on borrowed keywords to 3/5
+  on its own text, where it is correctly dropped
+
+### Corrected
+- **`temperature=0` is not reproducible.** Two identical runs disagreed on two
+  of 25 stories, because Ollama seeds each request randomly unless told
+  otherwise. Every count reported before a fixed seed was added should have
+  carried a margin. A fixed seed makes a rerun comparable; it does not make the
+  judgment correct
+- **A model was accused of fabricating.** The two-stage deduplication run merged
+  an mRNA cancer vaccine story with one about humanoid robots, justified as
+  "Both articles report on Unitree's humanoid", and this was written up as the
+  model inventing a shared event. It was not. The mRNA story body contained the
+  entire Unitree story because of the wrapped-marker bug above. The model read
+  what it was given and answered correctly
+
+### Known state
+- **Deduplication is not wired in.** The two-stage mechanism is built and
+  validated on four hand-picked pairs, but its precision measurement was taken
+  on contaminated story bodies and is void. Re-measuring on the 149 correctly
+  split stories is in progress
+- **`ben's bites` and `NVIDIA Developer Relations` do not split.** ben's bites
+  is conversational prose with no heading structure; the NVIDIA digest is 4,974
+  words and is currently one story
+- Relevance judgment is the only part of the pipeline not enforced in code, and
+  it is the only part that is still sometimes wrong
+
 ## 2026-08-14 — SE Demo Generator: demo flows per solution area
 
 The original schema assumed one product per vendor. Trend Micro is endpoint,

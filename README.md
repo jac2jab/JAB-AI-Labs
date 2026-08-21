@@ -33,14 +33,29 @@ anyone else's attention.
 
 | Project | Status | What it does |
 |---|---|---|
-| [`maios-daily-brief`](projects/maios-daily-brief) | **v0.4.1 — working** | Turns an inbox into one prioritized morning brief. Meets its 80% reading-reduction target. |
+| [`maios-daily-brief`](projects/maios-daily-brief) | **v0.5 — in progress** | Splits newsletters into stories, scores each with a local model, and turns an inbox into one prioritized morning brief. |
 | [`se-demo-generator`](projects/se-demo-generator) | **Running; packs empty** | Turns sales-engineering discovery notes into a demo plan, talk tracks, and competitive positioning |
 
 ### MAIOS Daily Brief — current state
 
-The pipeline is `load → categorize + score → deduplicate → filter → summarize →
-render`. Every stage reports how many items it removed, so the roadmap's
-"reduce daily reading time by at least 80%" target is measured, not assumed.
+The pipeline is `load → split → categorize + score → deduplicate → filter →
+summarize → render`. Every stage reports how many items it removed, so the
+roadmap's "reduce daily reading time by at least 80%" target is measured, not
+assumed.
+
+**A newsletter is not one item.** Splitting each email into its individual
+stories is the change that makes the rest work: relevance and summarization now
+both operate on a single story's own text rather than on eight stories sharing
+one subject line.
+
+Current corpus — the most recent two issues from every newsletter actually
+subscribed to:
+
+```
+Emails:      28 from 13 newsletters
+Words:       39,276
+Stories:     149     (10 of 13 senders split)
+```
 
 ```powershell
 cd projects/maios-daily-brief
@@ -87,6 +102,16 @@ Tried in order, so the program runs for anyone who clones it:
 | **Anthropic API** | `pip install anthropic` + `ANTHROPIC_API_KEY` | Used when no local model is present |
 | **Extractive fallback** | nothing | Truncates the first sentence — **not a real summary** |
 
+Relevance scoring and deduplication are **local only**, with no API fallback:
+
+| Stage | Model | Falls back to |
+|---|---|---|
+| Relevance | `llama3.1:8b` | keyword matching, named in the brief |
+| Duplicates | `nomic-embed-text` + `llama3.1:8b` | lexical overlap |
+
+Mail contains real correspondence, so a stage that would send it off the
+machine to work is a stage that does not run.
+
 The brief names the backend that produced its summaries, so fallback output is
 never presented as model-generated.
 
@@ -108,6 +133,11 @@ the roadmap's 80% target.**
 **v0.4.1** (14 Aug 2026) — three ingestion bugs that only real mail could
 expose: stub `text/plain` parts, numeric HTML entities, and URLs crowding out
 the article body. See [First run against real mail](#first-run-against-real-mail-14-aug-2026).
+
+**v0.5** (20 Aug 2026, in progress) — newsletters split into individual
+stories; model-assisted relevance scoring; local embeddings and two-stage
+duplicate detection; the reading-reduction baseline corrected to the whole
+newsletter as it arrived.
 
 Sample output: [`daily_brief_2026-08-13.md`](projects/maios-daily-brief/output/daily_brief_2026-08-13.md)
 
@@ -145,6 +175,12 @@ Words to read:       3,903 -> 74
 Reading reduction:   98%  (target: 80%)
 ```
 
+> **This baseline was wrong, and v0.5 corrected it.** Those 3,903 words are the
+> *truncated* input — `ingest.py` capped each body at 4,000 characters, so 58%
+> of the mail that actually arrived was discarded before being counted. The six
+> newsletters carry 9,201 words. The percentage happened to be conservative, but
+> the denominator was measuring the pipeline's own truncation.
+
 Real mail broke three things the synthetic fixture never could:
 
 1. **`text/plain` is often a stub.** Techpresso ships 210 characters — *"You
@@ -161,7 +197,57 @@ Real mail broke three things the synthetic fixture never could:
 
 Fixing those took Techpresso from 29 usable words to 630.
 
-### The scoring flaw real mail exposed
+### What v0.5 fixed, and how it was found
+
+Real mail exposed a fabrication, not just a scoring bug. The v0.4.1 brief led
+with:
+
+> Apple may pay publishers for Siri news **if a proposed deal is approved,
+> potentially altering how AI-powered virtual assistants are monetized.**
+
+The Apple story began at character 4,054 of that newsletter — past the
+4,000-character body cap. The only Apple text the summarizer received was the
+**table-of-contents line**. The real article, which says Apple pitched a
+pay-as-you-go model against a nine-figure budget per a *Wall Street Journal*
+report, was never in the prompt. The bolded half was generated from a headline.
+
+Three bugs of the same shape were found this way — a story absorbing text that
+is not its own, and the absorbed vocabulary then driving a decision:
+
+| Bug | Symptom |
+|---|---|
+| 4,000-character body cap | 58% of every roundup discarded, including the subject's own story |
+| Last story ran to end of file | A police-surveillance story scored 4/5 on `anthropic`, from a quick link in its footer |
+| A hard wrap inside a TLDR marker | An mRNA cancer vaccine story absorbed one about humanoid robots |
+
+Each was invisible until something downstream produced an absurd result.
+
+### Relevance is now a model's judgment, enforced in code
+
+The model answers one question — which of five categories this story is — using
+the criterion *does it change what I would build, or what I would say to a
+customer?* It **never emits a score**. The arithmetic is a dict in code, so the
+weighting is visible and changeable in one place.
+
+Everything below was tried as a prompt instruction first, and each one failed
+until it was moved into code:
+
+- **Advertising is labelled from above, not inside.** `FROM OUR PARTNERS` sits
+  on the line *before* the heading it labels, so searching inside the block
+  never finds it. One advert was headed `Secondary ad here`
+- **Bullet lists are not stories.** Every list roundup carried 5+ list items;
+  the most any real story carried was 3
+- **House promotion names its own publication**
+- **Furniture is structural.** Asked as a yes/no beside the relevance
+  questions, the model's answers moved together — one prompt made everything
+  furniture and nothing relevant, the next the exact reverse
+
+Measured against the same stories, keyword scoring keeps 5 and model scoring
+keeps 10. The keyword five still include a user-count story scoring 4/5 on the
+word `openai`, and still miss both Grok launches, an autonomous agent intrusion,
+and a remote hijack vulnerability.
+
+### The scoring flaw real mail exposed (v0.4.1)
 
 Keyword scoring inverted its own job on this sample:
 
@@ -181,20 +267,36 @@ Summarization already uses a model; relevance does not. That is the gap.
 
 ### Known limitations
 
-- **Deduplication is lexical**, not semantic. Two write-ups of the same story
-  that share little vocabulary still will not be caught. Embeddings are the
-  next step.
+- **Deduplication is built but not wired in.** Lexical overlap is measurably
+  exhausted: across the corpus the true duplicate (Techpresso and The Neuron
+  both covering the Grok 4.6 launch) scored **0.250**, *below* an unrelated pair
+  at **0.263**. No threshold separates them. Embeddings alone do not fix it
+  either — same topic is not the same event, and an mRNA vaccine story and a
+  robotics story scored 0.786 against the true pair's 0.793. The two-stage
+  design — embeddings to narrow 11,026 pairs to a handful, then one narrow
+  *same event, yes or no* per candidate — is built and being measured.
+- **`ben's bites` and `NVIDIA Developer Relations` do not split.** ben's bites
+  is conversational prose with no heading structure; the NVIDIA digest is 4,974
+  words and remains one story.
+- **Relevance judgment is the only stage not enforced in code**, and the only
+  one still sometimes wrong. `llama3.1:8b` scores 5 of 6 on cases where the 3B
+  model scored 3 of 6, but a Grok launch mixing benchmarks with adoption
+  statistics still lands in business news.
+- **A fixed seed is required for comparable runs.** `temperature=0` alone is
+  not reproducible — Ollama seeds each request randomly unless told otherwise,
+  and two identical runs disagreed on two of 25 stories.
 - **Newsletter furniture is stripped heuristically.** URLs, image placeholders,
   and punctuation rules are removed by pattern. Tuned against six real
   newsletters from three senders — a wider sample will surface more.
-- **Relevance scoring is keyword-based** and demonstrably wrong on roundup
-  newsletters (see above). This is the next thing to fix.
-- **Throughput is one model call per item**, ~5s each locally. Fine for a daily
-  brief; a large mailbox would need batching.
-- **Scoring is still keyword-based.** Summarization uses a model; relevance
-  does not.
+- **Newsletter structure is heuristic.** Four splitting patterns, each written
+  after watching real mail defeat the previous one. Ten of thirteen senders
+  split; a wider sample will surface more.
+- **Throughput is one model call per story.** Relevance scoring runs ~33s per
+  story on `llama3.1:8b` locally, so 149 stories is roughly 45 minutes and a
+  full deduplication pass adds another 40. Fine overnight; a large mailbox
+  would need batching.
 
-**v0.5**: semantic deduplication via embeddings, and model-assisted scoring.
+**Next**: finish deduplication, then `ben's bites` and the NVIDIA digest.
 
 ---
 
@@ -225,7 +327,7 @@ JAB-AI-Labs/
 ├── CHANGELOG.md
 ├── curriculum/            self-study modules 01–06
 ├── projects/
-│   ├── maios-daily-brief/ MAIOS v0.4.1 — working
+│   ├── maios-daily-brief/ MAIOS v0.5 — in progress
 │   └── se-demo-generator/ discovery notes → demo plan; vendor packs unwritten
 ├── labs/                  short experiments
 └── references/            source material and notes
