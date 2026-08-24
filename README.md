@@ -35,6 +35,7 @@ anyone else's attention.
 |---|---|---|
 | [`maios-daily-brief`](projects/maios-daily-brief) | **v0.5 — in progress** | Splits newsletters into stories, scores each with a local model, and turns an inbox into one prioritized morning brief. |
 | [`se-demo-generator`](projects/se-demo-generator) | **Running; packs empty** | Turns sales-engineering discovery notes into a demo plan, talk tracks, and competitive positioning |
+| [`receipt-scanner`](projects/receipt-scanner) | **v0.1 — loop verified; reading not yet measured** | Photograph a receipt, read it with Claude, confirm the fields, keep the image as long as the purchase can matter |
 
 ### MAIOS Daily Brief — current state
 
@@ -328,7 +329,8 @@ JAB-AI-Labs/
 ├── curriculum/            self-study modules 01–06
 ├── projects/
 │   ├── maios-daily-brief/ MAIOS v0.5 — in progress
-│   └── se-demo-generator/ discovery notes → demo plan; vendor packs unwritten
+│   ├── se-demo-generator/ discovery notes → demo plan; vendor packs unwritten
+│   └── receipt-scanner/   photograph a receipt, keep it as long as it matters
 ├── labs/                  short experiments
 └── references/            source material and notes
 ```
@@ -342,9 +344,11 @@ Related applied AI work not yet migrated into this repository:
 - **Local model experimentation** with Ollama (May 2026) — now the default
   backend for both projects above.
 - **Receipt scanner** built in Google AI Studio (2026). Never reached working
-  state; parked rather than published. Document extraction is structurally the
-  same problem as the Daily Brief's ingestion, so it is a candidate to revive
-  as a MAIOS module once there is a reason to.
+  state; parked rather than published — and now revived as
+  [`projects/receipt-scanner`](projects/receipt-scanner), rebuilt in Python
+  against Claude vision. The rebuild is documented against the original's
+  actual defects, including a cleanup routine that would have deleted the
+  ten-year-warranty receipts the app existed to protect.
 
 ## Credentials
 

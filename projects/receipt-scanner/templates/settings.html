@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+{% block title %}Settings — PixelScan Pro{% endblock %}
+
+{% block content %}
+<h1 class="massive">Set</h1>
+<div class="meta"><span>{{ users|length }} account{{ '' if users|length == 1 else 's' }}</span></div>
+
+<div class="split" style="margin-top:32px">
+  <div class="readout">
+    <div class="label" style="margin-bottom:18px">Accounts</div>
+    <div class="notice" style="margin-bottom:22px">
+      Accounts share one library — everyone signed in sees every receipt. Who
+      scanned a receipt is recorded on it; nobody has a private shelf.
+    </div>
+    {% for u in users %}
+      <div style="display:flex;justify-content:space-between;align-items:center;
+                  padding:14px 0;border-bottom:1px solid var(--line-soft);
+                  font-family:var(--mono);font-size:13px">
+        <span>{{ u.name }}{% if u.id == user.id %} <span class="pill filed">you</span>{% endif %}</span>
+        <span style="color:var(--faint);font-size:11px">since {{ u.created_at[:10] }}</span>
+      </div>
+    {% endfor %}
+
+    {% if error %}<div class="notice bad" style="margin-top:22px">{{ error }}</div>{% endif %}
+
+    <form method="post" action="/settings/adduser" style="margin-top:26px">
+      <div class="label" style="margin-bottom:14px">Add an account</div>
+      <div class="pair">
+        <div class="field">
+          <label for="newname">Name</label>
+          <input type="text" id="newname" name="name" autocapitalize="off" required>
+        </div>
+        <div class="field">
+          <label for="newpass">Passcode</label>
+          <input type="password" id="newpass" name="passcode"
+                 minlength="{{ min_length }}" autocomplete="new-password" required>
+        </div>
+      </div>
+      <button class="btn" type="submit">Create account</button>
+    </form>
+  </div>
+
+  <div>
+    <div class="readout">
+      <div class="label" style="margin-bottom:18px">This archive</div>
+      <dl>
+        <div><dt>Receipts</dt><dd>{{ stats.total or 0 }}</dd></div>
+        <div><dt>Awaiting extraction</dt><dd>{{ stats.needs_extraction or 0 }}</dd></div>
+        <div><dt>Awaiting review</dt><dd>{{ stats.needs_review or 0 }}</dd></div>
+        <div><dt>Filed</dt><dd>{{ stats.filed or 0 }}</dd></div>
+      </dl>
+      <div class="notice" style="margin:26px 0 0">
+        <strong>Model:</strong> {{ model }}<br>
+        <strong>API key:</strong>
+        {% if key_present %}found{% else %}
+          <span style="color:var(--danger)">not set — extraction will queue rather than run</span>
+        {% endif %}<br>
+        <strong>Database:</strong> {{ db_path }}<br>
+        <strong>Images:</strong> {{ image_dir }}
+      </div>
+    </div>
+
+    <div class="readout" style="margin-top:24px">
+      <div class="label" style="margin-bottom:14px">Retention policy</div>
+      <div class="notice" style="margin:0">
+        No warranty item → <strong>{{ default_years }} years</strong> from the
+        purchase date.<br>
+        Warranty item → the whole term plus <strong>{{ grace_days }} days</strong>.<br>
+        Lifetime warranty → kept indefinitely.<br><br>
+        Changing this is a one-line edit in <code>retention.py</code>.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

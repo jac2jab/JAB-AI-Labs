@@ -1,5 +1,74 @@
 # JAB AI Labs Changelog
 
+## 2026-08-24 — Receipt Scanner v0.1: the model reports, the code decides
+
+A receipt scanner built in Google AI Studio in 2026 never reached working state
+and was parked. Rebuilt here as Python + FastAPI + SQLite + Claude vision, on
+this machine, with the phone as its client.
+
+**The design decision everything follows from.** A restaurant tip box holds
+`10-`, or `-`, or `CASH`, or nothing. Those are conventions, not numbers, and a
+model re-decides what they mean on every call. So the model is asked for one
+thing — the characters physically in the box — and `amounts.py` decides what
+they mean. Then arithmetic checks the handwriting: if `subtotal + tax + tip`
+misses `total` by more than a cent the receipt is flagged, so a model that reads
+`10-` as `100` is caught by the sum rather than at tax time. When the tip box
+alone is illegible it is *derived* from the other three and the derivation is
+shown.
+
+### Added
+- `amounts.py` — written-amount interpretation and reconciliation. 21 rules,
+  each with its example
+- `retention.py` — how long a receipt is kept. No warranty item, two years;
+  warranty item, the term plus 90 days; lifetime, indefinitely. Retention is
+  policy, so it is a table in code and not something the model is asked for
+- `extract.py` — Claude vision via `messages.parse()` with a Pydantic schema, so
+  the shape is enforced at the API boundary rather than requested in a prompt.
+  Every money field returns as a *string*, verbatim. Also runs as a CLI, with
+  `--compare` to put two models on the same receipts
+- `db.py` — SQLite archive. Money as integer cents; FTS5 over transcripts, so a
+  receipt is findable by a word printed on the paper
+- `auth.py`, `images.py`, `pdf.py`, `app.py` — accounts, photo preparation,
+  per-receipt searchable PDF, and the pages
+- `selftest_app.py` — the whole loop end to end against real HTTP and real
+  SQLite: 55 checks
+
+### Fixed — defects carried over from the AI Studio original
+- **Every failure became `setError("Failed to process document.")`**, discarding
+  the exception. A Google outage and a bug in the app were indistinguishable,
+  which is exactly where the original stalled. Each stage now reports its own
+  failure with the real error and status code
+- **Extraction ran before storage**, so an API failure lost the photograph too.
+  Inverted: the image is stored and the row created first, and a failed reading
+  leaves the receipt queued with the image safe. The paper can go in the bin the
+  moment the upload completes
+- **`purgeOldDocs` deleted everything older than two years**, ignoring both
+  `retention` and `isWarranty` — it would have destroyed a ten-year-warranty
+  receipt, the exact document the app exists to keep. Cleanup now offers only
+  receipts past their own retention date
+- **`doc.amount.toFixed(2)` ran on unvalidated model output**, so one null field
+  blanked the library. Fields are Pydantic-validated; an unread receipt renders
+  as `—`
+- **`handleShare` wrote an email into your own user document** while documents
+  were only ever read from `users/{uid}/documents`, so sharing did nothing
+
+### Found while building
+- `db.connect(path=DB_PATH)` bound the default at import, so reassigning
+  `db.DB_PATH` silently had no effect — the first self-test wrote into the real
+  archive. Resolved at call time now, with `PIXELSCAN_DATA` as the supported
+  override
+- `hashlib.scrypt` at `n=2**15, r=8` needs exactly OpenSSL's default 32MB
+  ceiling and refuses without an explicit `maxmem`
+- An `async` endpoint with a sync DB dependency opens the connection in the
+  threadpool and uses it on the event loop — `check_same_thread=False`, with one
+  connection per request
+
+### Not yet measured
+**Extraction accuracy on real receipts.** No API key on the machine and no
+photographs yet. The README's accuracy table is deliberately empty, and the
+synthetic receipts in `make_fixture.py` are explicitly excluded from it — they
+test wiring, not reading.
+
 ## 2026-08-20 — MAIOS Daily Brief v0.5 (in progress): stories, not emails
 
 v0.4.1 documented the problem: keyword relevance scoring is wrong on roundup

@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% block title %}Queue — PixelScan Pro{% endblock %}
+
+{% block content %}
+<h1 class="massive">Queue</h1>
+<div class="meta">
+  <span>{{ receipts|length }} awaiting extraction</span>
+</div>
+
+<div class="notice" style="margin-top:28px">
+  Every photograph here is <strong>already saved</strong> — the paper can go in the
+  bin. Only the reading is outstanding. A missing API key, a rate limit, or an
+  Anthropic outage all land here rather than losing the image.
+</div>
+
+{% if receipts %}
+  <form method="post" action="/queue/process" style="margin-bottom:28px">
+    <button class="btn primary" type="submit">Process queue ({{ receipts|length }})</button>
+  </form>
+
+  <div class="grid">
+    {% for r in receipts %}
+      <a class="card" href="/receipt/{{ r.id }}">
+        <div class="cardtop">
+          <span>Uploaded {{ r.created_at[:10] }}</span>
+          <span class="pill queued">Queued</span>
+        </div>
+        <img src="/thumb/{{ r.id }}" alt="" style="width:100%;border-radius:14px;margin-bottom:14px">
+        {% if r.extraction_error %}
+          <div class="hint flag">{{ r.extraction_error }}</div>
+        {% endif %}
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty">Nothing waiting — everything has been read</div>
+{% endif %}
+{% endblock %}

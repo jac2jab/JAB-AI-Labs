@@ -1,0 +1,10 @@
+# The archive itself never goes in a public repo.
+# Receipt images and the database hold vendors, dates, amounts, and card digits.
+data/
+samples/*
+!samples/.gitkeep
+!samples/README.md
+
+__pycache__/
+*.pyc
+.env

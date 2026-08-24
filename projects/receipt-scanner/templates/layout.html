@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="color-scheme" content="dark">
+  <title>{% block title %}PixelScan Pro{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="eyebrow">PixelScan&nbsp;Pro</div>
+    <nav class="rail">
+      <a href="/" class="{{ 'current' if page == 'library' }}">Library</a>
+      <a href="/queue" class="{{ 'current' if page == 'queue' }}">
+        Queue{% if queued %}<span class="badge">{{ queued }}</span>{% endif %}
+      </a>
+      <a href="/cleanup" class="{{ 'current' if page == 'cleanup' }}">Cleanup</a>
+      <a href="/settings" class="{{ 'current' if page == 'settings' }}">Settings</a>
+    </nav>
+    <div class="sidebar-foot">
+      <div>{{ user.name if user }}</div>
+      <form method="post" action="/signout">
+        <button class="iconbtn" type="submit" style="color:var(--faint);font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase">
+          Sign out
+        </button>
+      </form>
+    </div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div class="eyebrow">PixelScan&nbsp;Pro</div>
+      <nav>
+        <a href="/" class="{{ 'current' if page == 'library' }}">Library</a>
+        <a href="/queue" class="{{ 'current' if page == 'queue' }}">Queue{% if queued %} ({{ queued }}){% endif %}</a>
+        <a href="/cleanup" class="{{ 'current' if page == 'cleanup' }}">Clean</a>
+        <a href="/settings" class="{{ 'current' if page == 'settings' }}">Set</a>
+      </nav>
+    </div>
+
+    {% for message in messages %}
+      <div class="notice {{ message.kind }}">{{ message.text }}</div>
+    {% endfor %}
+
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+{% block fab %}
+  {# Two entry points, because `capture` forces the camera and would block
+     picking several photos out of the camera roll. The round button shoots a
+     receipt; "Upload" in the header drains a backlog. #}
+  <form id="cameraform" method="post" action="/scan" enctype="multipart/form-data" hidden>
+    <input type="file" id="camerainput" name="photos" accept="image/*" capture="environment">
+  </form>
+  <button type="button" class="fab" onclick="document.getElementById('camerainput').click()">
+    Scan<br>Doc
+  </button>
+  <script>
+    (function () {
+      var input = document.getElementById('camerainput');
+      if (input) {
+        input.addEventListener('change', function () {
+          if (this.files.length) { document.getElementById('cameraform').submit(); }
+        });
+      }
+      var upload = document.getElementById('uploadinput');
+      if (upload) {
+        upload.addEventListener('change', function () {
+          if (this.files.length) { document.getElementById('uploadform').submit(); }
+        });
+      }
+    })();
+  </script>
+{% endblock %}
+
+</body>
+</html>

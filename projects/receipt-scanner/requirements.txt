@@ -1,0 +1,15 @@
+# Receipt Scanner
+#
+# Phase 1 (extraction, runnable now) needs only the first two.
+# The rest arrive with the web app in phase 2 onwards.
+
+anthropic>=1.0.0          # Claude vision + structured outputs
+pillow>=11.0              # photo rotation, downscaling, JPEG encoding
+
+pillow-heif>=0.18         # optional: HEIC photos picked from the camera roll
+
+fastapi>=0.115            # the web app
+uvicorn[standard]>=0.32   # serving it on the LAN
+jinja2>=3.1               # server-rendered pages, no Node, no build step
+python-multipart>=0.0.9   # multipart form uploads from the phone
+reportlab>=4.2            # per-receipt searchable PDF

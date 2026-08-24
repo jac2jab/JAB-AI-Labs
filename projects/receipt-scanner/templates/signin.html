@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="color-scheme" content="dark">
+  <title>{{ 'Set up' if setup else 'Sign in' }} — PixelScan Pro</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="centre">
+  <div class="box">
+    <div class="eyebrow" style="margin-bottom:18px">PixelScan&nbsp;Pro</div>
+    <h1 class="massive">{{ 'Set&nbsp;up'|safe if setup else 'Scan' }}</h1>
+
+    {% if setup %}
+      <div class="notice">
+        First run. Create the account that unlocks this archive. It is stored on
+        this machine only — there is no cloud account and no password reset, so
+        choose something you will remember.
+      </div>
+    {% endif %}
+
+    {% if error %}<div class="notice bad">{{ error }}</div>{% endif %}
+
+    <form method="post" action="{{ '/setup' if setup else '/signin' }}">
+      <div class="field">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" value="{{ name or '' }}"
+               autocomplete="username" autocapitalize="off" required autofocus>
+      </div>
+      <div class="field">
+        <label for="passcode">Passcode</label>
+        <input type="password" id="passcode" name="passcode"
+               autocomplete="{{ 'new-password' if setup else 'current-password' }}"
+               minlength="{{ min_length }}" required>
+        {% if setup %}<div class="hint">At least {{ min_length }} characters.</div>{% endif %}
+      </div>
+      <button class="btn primary" type="submit" style="width:100%">
+        {{ 'Create account' if setup else 'Sign in' }}
+      </button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,89 @@
+{% extends "layout.html" %}
+{% block title %}{{ receipt.vendor or 'Receipt' }} — PixelScan Pro{% endblock %}
+
+{% block content %}
+<h1 class="massive">{{ (receipt.vendor or 'Receipt')[:18] }}</h1>
+<div class="meta">
+  <span>{{ receipt.purchased_on.strftime('%m/%d/%y') if receipt.purchased_on else 'no date' }}</span>
+  <span class="pill {{ 'filed' if receipt.status == 'filed' else 'review' }}">{{ receipt.status.replace('_', ' ') }}</span>
+  <a href="/">Back to library</a>
+</div>
+
+<div class="split" style="margin-top:32px">
+  <div class="shot">
+    <img src="/image/{{ receipt.id }}" alt="The receipt as photographed">
+  </div>
+
+  <div>
+    <div class="readout">
+      <dl>
+        <div>
+          <dt>Total charged</dt>
+          <dd class="big">{{ money(receipt.total) }}</dd>
+        </div>
+        <div>
+          <dt>Tip</dt>
+          <dd class="accent">{{ money(receipt.tip) }}</dd>
+        </div>
+        <div>
+          <dt>Subtotal</dt>
+          <dd>{{ money(receipt.subtotal) }}</dd>
+        </div>
+        <div>
+          <dt>Tax</dt>
+          <dd>{{ money(receipt.tax) }}</dd>
+        </div>
+        <div>
+          <dt>Card</dt>
+          <dd>**** {{ receipt.card_last4 or '----' }}</dd>
+        </div>
+        <div>
+          <dt>Payment</dt>
+          <dd>{{ receipt.payment_method or '—' }}</dd>
+        </div>
+        <div>
+          <dt>Category</dt>
+          <dd>{{ receipt.category or '—' }}</dd>
+        </div>
+        <div>
+          <dt>Warranty</dt>
+          <dd class="{{ 'accent' if receipt.has_warranty }}">
+            {{ 'YES' if receipt.has_warranty else 'NO' }}
+          </dd>
+        </div>
+      </dl>
+
+      <div class="notice" style="margin:28px 0 0">
+        <strong>Kept until {{ retention_label(receipt) }}.</strong>
+        {{ receipt.retention_reason or '' }}
+        {% if receipt.warranty_note %}<br>Warranty item: {{ receipt.warranty_note }}{% endif %}
+      </div>
+
+      <div class="actions">
+        <a class="btn" href="/receipt/{{ receipt.id }}/pdf">Download PDF</a>
+        <a class="btn" href="/receipt/{{ receipt.id }}/edit">Edit</a>
+        <a class="btn" href="/image/{{ receipt.id }}" download>Image</a>
+        <form method="post" action="/receipt/{{ receipt.id }}/delete"
+              onsubmit="return confirm('Delete this receipt and its image? This cannot be undone.')">
+          <button class="btn danger" type="submit">Delete</button>
+        </form>
+      </div>
+    </div>
+
+    {% if receipt.extraction_notes %}
+      <div class="readout" style="margin-top:24px">
+        <div class="label">How each amount was read</div>
+        <div class="transcript">{% for k, v in receipt.extraction_notes.items() %}{{ k }}: {{ v }}
+{% endfor %}</div>
+      </div>
+    {% endif %}
+
+    {% if receipt.transcript %}
+      <div class="readout" style="margin-top:24px">
+        <div class="label">Transcript</div>
+        <div class="transcript">{{ receipt.transcript }}</div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
