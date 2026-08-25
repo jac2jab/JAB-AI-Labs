@@ -343,12 +343,6 @@ Related applied AI work not yet migrated into this repository:
 
 - **Local model experimentation** with Ollama (May 2026) — now the default
   backend for both projects above.
-- **Receipt scanner** built in Google AI Studio (2026). Never reached working
-  state; parked rather than published — and now revived as
-  [`projects/receipt-scanner`](projects/receipt-scanner), rebuilt in Python
-  against Claude vision. The rebuild is documented against the original's
-  actual defects, including a cleanup routine that would have deleted the
-  ten-year-warranty receipts the app existed to protect.
 
 ## Credentials
 
