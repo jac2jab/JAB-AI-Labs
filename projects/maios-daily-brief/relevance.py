@@ -68,17 +68,34 @@ LINK_RE = re.compile(r"\[[^\]]{3,60}\]")
 
 # What each category is worth. Kept as data so the weighting is visible and
 # changeable without touching the prompt.
+# Re-weighted after the first full run, where 99 of 149 stories landed on
+# new_or_changed_capability and 64 of the 68 items in the brief shared one
+# category. A priority two thirds of stories agree on carries no information,
+# and the per-issue cap was doing the filtering the scorer should have done.
+#
+# Re-weighting alone could not fix that: moving one category's number moves all
+# 99 stories together. The category was too broad, absorbing a frontier model
+# launch, a Cursor tutorial, and a tool announcement as the same thing, so it is
+# split. A model or platform changing under you is what changes an
+# architecture; a new tool is worth knowing and rarely changes a design.
+#
+# security_or_privacy_development is raised from 4 to 5. For a customer-facing
+# security engineer, a vulnerability or attack technique is not a lesser item
+# than a model release - it is the one most likely to change what he says in the
+# room. It fired 6 times in 149 and TLDR InfoSec is now subscribed.
 CATEGORY_SCORES = {
-    "new_or_changed_capability": 5,
-    "security_or_privacy_development": 4,
+    "model_or_platform_capability": 5,
+    "security_or_privacy_development": 5,
+    "tool_or_technique": 3,
     "business_or_industry_news": 2,
     "consumer_product_news": 2,
     "list_of_links_or_tools": 1,
 }
 
 CATEGORY_MEANING = {
-    "new_or_changed_capability": "changes what I would build",
+    "model_or_platform_capability": "changes what I would build",
     "security_or_privacy_development": "changes what I would say to a customer",
+    "tool_or_technique": "a tool or technique - worth knowing, not deal-changing",
     "business_or_industry_news": "industry news - changes neither",
     "consumer_product_news": "consumer product news - changes neither",
     "list_of_links_or_tools": "newsletter furniture",
@@ -95,10 +112,23 @@ systems hands-on.
 Pick the ONE category that best describes the story. Judge the story by what it
 reports, not by whether it mentions him.
 
-new_or_changed_capability
-    A model, tool, technique, price, benchmark, context limit, or failure mode
-    that someone designing or running an AI system would weigh when deciding
-    what to use or how to build it.
+model_or_platform_capability
+    An AI model or AI service changed. A model released, updated, deprecated,
+    or repriced; a context limit, rate limit, benchmark result, API capability,
+    or a documented failure mode of one.
+
+    The subject must be an AI model or the service that serves one — OpenAI,
+    Anthropic, Google, xAI, DeepSeek, Meta, Mistral and their equivalents. An
+    article about databases, version control, data modelling, or general
+    engineering practice is NOT this category, however deep or infrastructural
+    it is, and neither is a product that merely has "platform" in its name.
+    Those are tool_or_technique.
+
+tool_or_technique
+    Something built ON TOP of those platforms, or a way of using them. A tool,
+    library, app, integration, extension, prompt pack, tutorial, or workflow
+    tip. Worth knowing and rarely deal-changing. Most "how to" and "here is a
+    new app" items belong here, not above.
 
 security_or_privacy_development
     A vulnerability, breach, attack technique, malware, or a change in how a
