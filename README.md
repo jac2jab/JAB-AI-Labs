@@ -49,35 +49,37 @@ stories is the change that makes the rest work: relevance and summarization now
 both operate on a single story's own text rather than on eight stories sharing
 one subject line.
 
-Current corpus — the most recent two issues from every newsletter actually
-subscribed to:
-
-```
-Emails:      28 from 13 newsletters
-Words:       39,276
-Stories:     149     (10 of 13 senders split)
-```
-
 ```powershell
 cd projects/maios-daily-brief
-python generate_brief.py
+python generate_brief.py --source ./inbox/
 ```
 
-Current run against the 18-item fixture, summarized by a local `llama3.2`:
+Current run — the most recent two issues from every newsletter actually
+subscribed to, scored by a local `llama3.1:8b` and summarized by `llama3.2`:
 
 ```
-Items in:            18
-Duplicates merged:  -3
-Below relevance:    -9
-Items out:           6
-Item reduction:      67%
-Words to read:       1,589 -> 130
-Reading reduction:   92%  (target: 80%)
+Emails in:           28     from 13 newsletters
+Stories after split: 149    (10 of 13 senders split)
+Duplicates merged:  -12
+Below relevance:    -90
+Beyond top 4/issue:  -9
+Items out:           38
+Words to read:       39,276 -> 843
+Reading reduction:   98%  (target: 80%)
 ```
 
 **The roadmap's target is reading time, so the metric counts words, not items.**
 An inbox of long newsletters and a brief of one-line summaries are not
-comparable by item count alone.
+comparable by item count alone. The input is counted as it arrived, before
+anything is split or dropped — see
+[the corrected baseline](#first-run-against-real-mail-14-aug-2026) for why that
+distinction matters.
+
+**The relevance floor removes 90 items and the per-issue cap only 9.** That
+split is the point: an earlier v0.5 run had those at 39 and 30, which meant
+structure was filtering the brief and the scorer was not. Priority now carries
+information — 33% of stories reach the top score, against 66% before the
+capability category was split.
 
 ### Input sources
 
@@ -140,7 +142,10 @@ stories; model-assisted relevance scoring; local embeddings and two-stage
 duplicate detection; the reading-reduction baseline corrected to the whole
 newsletter as it arrived.
 
-Sample output: [`daily_brief_2026-08-13.md`](projects/maios-daily-brief/output/daily_brief_2026-08-13.md)
+Sample output: [`daily_brief_2026-08-25_email-newsletters.md`](projects/maios-daily-brief/output/daily_brief_2026-08-25_email-newsletters.md)
+— 28 real newsletters, split into stories, scored and deduplicated by local
+models. Each item states the category that produced its priority, and the brief
+names every model that touched it.
 
 ### What v0.4 fixed
 
