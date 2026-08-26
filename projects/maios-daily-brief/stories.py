@@ -89,6 +89,17 @@ EMOJI_RE = re.compile("[\U0001F300-\U0001FAFF\u2600-\u26FF\u2700-\u27BF]")
 TLDR_MARKER_RE = re.compile(r"\(([A-Z0-9][A-Z0-9\s]{1,28})\)\s*\[\d+\]")
 TLDR_SPONSOR_KIND = "SPONSOR"
 
+# TLDR-family newsletters banner each section on its own upper-case line -
+# "DEEP DIVES", "LAUNCHES & TOOLS", "QUICK LINKS". The banner says what kind of
+# item follows far more reliably than a model reading the item does, so it is
+# captured here and used as a ceiling on the score rather than asked about.
+SECTION_BANNER_RE = re.compile(
+    r"(?m)^[ \t]*([A-Z][A-Z0-9 ,&'\-/]{5,58})[ \t]*$"
+)
+
+# How far back to look for the banner a story sits under.
+SECTION_LOOKBACK_CHARACTERS = 4000
+
 # Numbered steps are parts of one tutorial, not separate stories. Tuned against
 # the Smarter with AI sample; a wider sample will surface more of these.
 FRAGMENT_TITLE_RE = re.compile(r"^step\s+\d", re.IGNORECASE)
@@ -161,6 +172,26 @@ def _preceded_by_sponsor(text: str, start: int) -> bool:
     """True when an advertising label sits just above this block's heading."""
     window = text[max(0, start - SPONSOR_LOOKBACK_CHARACTERS):start].lower()
     return any(marker in window for marker in SPONSOR_LABEL_MARKERS)
+
+
+def _section_above(text: str, start: int) -> str:
+    """The section banner a story sits under, or empty when there is none.
+
+    Advertising labels are upper case on their own line and look exactly like a
+    banner, so they have to be skipped: without this, 23 of 149 stories came
+    back filed under "FROM OUR PARTNER", including two genuine security stories.
+    """
+    window_start = max(0, start - SECTION_LOOKBACK_CHARACTERS)
+
+    for banner in reversed(list(SECTION_BANNER_RE.finditer(text, window_start, start))):
+        name = " ".join(banner.group(1).split())
+
+        if any(marker in name.lower() for marker in SPONSOR_MARKERS):
+            continue
+
+        return name
+
+    return ""
 
 
 def _is_list_block(body: str) -> bool:
@@ -283,6 +314,7 @@ def _blocks_from_heads(heads: list[dict], text: str) -> list[dict]:
                 "title": head["title"],
                 "body": _trim_tail(text[head["body_start"]:end].strip()),
                 "start": head["start"],
+                "section": _section_above(text, head["start"]),
             }
         )
 
@@ -350,6 +382,7 @@ def split_stories(email: dict) -> list[dict]:
             "body": block["body"][:MAX_STORY_CHARACTERS],
             "sender": email.get("sender", ""),
             "parent_subject": email.get("subject", ""),
+            "section": block.get("section", ""),
             "split": True,
         }
         for block in kept

@@ -103,6 +103,36 @@ CATEGORY_MEANING = {
 
 UNKNOWN_CATEGORY_SCORE = 3
 
+# A newsletter states what kind of item it is publishing, in a banner above the
+# item, and that statement is more reliable than a model's reading of the item.
+# A section called "LAUNCHES & TOOLS" contains tools; six revisions of the
+# prompt never got llama3.1:8b to agree that a DuckDB release is not an AI
+# platform capability, and the banner above it said so all along.
+#
+# These are ceilings, never floors. A section can only lower a score, so a
+# mis-set ceiling hides a story rather than promoting furniture, and the model
+# keeps its say wherever the newsletter has not already answered.
+#
+# Sections deliberately left uncapped, because a genuine model launch can appear
+# under them: HEADLINES & LAUNCHES, ENGINEERING & RESEARCH, SCIENCE & FUTURISTIC
+# TECHNOLOGY, and stories with no banner at all.
+SECTION_CEILINGS = {
+    "QUICK LINKS": 1,
+    "BIG TECH & STARTUPS": 2,
+    "MISCELLANEOUS": 3,
+    "DEEP DIVES": 3,
+    "DEEP DIVES & ANALYSIS": 3,
+    "OPINIONS & ADVICE": 3,
+    "LAUNCHES & TOOLS": 3,
+    "PROGRAMMING, DESIGN & DATA SCIENCE": 3,
+}
+
+# A recurring how-to section is a tutorial whatever its subject. The Neuron's
+# "AI Skill of the Day" teaches a technique; it does not report that a model
+# changed.
+TUTORIAL_TITLE_RE = re.compile(r"^\W*(ai skill of the day|how to)\b", re.IGNORECASE)
+TUTORIAL_CEILING = 3
+
 SYSTEM_PROMPT = """You classify technology news for one specific person.
 
 That person is a customer-facing solutions engineer with 30 years in enterprise
@@ -253,13 +283,37 @@ def score_from_answer(answer: dict, roundup: bool = False) -> tuple[int, str]:
     return score, reason
 
 
+def apply_ceilings(story: dict, score: int, reason: str) -> tuple[int, str]:
+    """Lower a score where the newsletter's own structure already answered.
+
+    Only ever lowers. The model's judgement stands wherever no ceiling applies.
+    """
+    ceilings = []
+
+    section = story.get("section", "").strip().upper()
+
+    if section in SECTION_CEILINGS:
+        ceilings.append((SECTION_CEILINGS[section], f"section {section}"))
+
+    if TUTORIAL_TITLE_RE.match(story.get("subject", "")):
+        ceilings.append((TUTORIAL_CEILING, "recurring how-to section"))
+
+    for ceiling, why in ceilings:
+        if ceiling < score:
+            reason = f"{reason} — capped at {ceiling} by {why}"
+            score = ceiling
+
+    return score, reason
+
+
 def score_story(story: dict) -> tuple[int, str]:
-    """Score one story: structure first, then the model."""
+    """Score one story: structure first, then the model, then structure again."""
     if is_list_roundup(story):
         # No model call needed; the structure already decided it.
         return score_from_answer({}, roundup=True)
 
-    return score_from_answer(_ask_ollama(story))
+    score, reason = score_from_answer(_ask_ollama(story))
+    return apply_ceilings(story, score, reason)
 
 
 def available() -> bool:
