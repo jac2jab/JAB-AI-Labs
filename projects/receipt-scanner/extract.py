@@ -35,6 +35,7 @@ from decimal import Decimal
 from typing import Literal
 
 import anthropic
+import pydantic
 from pydantic import BaseModel, Field
 
 import amounts
@@ -301,6 +302,17 @@ def interpret(fields: ReceiptFields) -> Extraction:
     )
 
 
+#: A response that fails to parse as JSON is retried once before being reported
+#: as a failure. Measured live on claude-opus-5: a receipt that failed with
+#: "EOF while parsing a string" — the same repetition-loop shape the SE Demo
+#: Generator's README documented for a small local model, this time from a
+#: large hosted one — succeeded cleanly on retry, twice. A malformed response
+#: is not billed as a usable extraction either way, so one retry is nearly
+#: free insurance against what appears to be sampling noise, not a systematic
+#: fault worth surfacing to the person scanning a receipt.
+MALFORMED_RESPONSE_RETRIES = 1
+
+
 def extract_from_bytes(
     image_bytes: bytes,
     media_type: str = images.API_MEDIA_TYPE,
@@ -311,71 +323,86 @@ def extract_from_bytes(
     client = client or anthropic.Anthropic()
     encoded = base64.standard_b64encode(image_bytes).decode("ascii")
 
-    started = time.monotonic()
-    try:
-        response = client.messages.parse(
-            model=model,
-            max_tokens=4096,
-            system=SYSTEM_PROMPT,
-            output_format=ReceiptFields,
-            messages=[{
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": encoded,
-                        },
+    request = {
+        "model": model,
+        "max_tokens": 4096,
+        "system": SYSTEM_PROMPT,
+        "output_format": ReceiptFields,
+        "messages": [{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": encoded,
                     },
-                    {
-                        "type": "text",
-                        "text": (
-                            "Transcribe this receipt. Report the tip and total "
-                            "boxes exactly as they appear, including any "
-                            "handwriting."
-                        ),
-                    },
-                ],
-            }],
-        )
-    except anthropic.AuthenticationError as exc:
-        raise ExtractionError(
-            "the Anthropic API rejected the credentials — set ANTHROPIC_API_KEY "
-            f"or run `ant auth login` ({exc.status_code})"
-        ) from exc
-    except anthropic.RateLimitError as exc:
-        retry = exc.response.headers.get("retry-after", "unknown")
-        raise ExtractionError(
-            f"rate limited by the Anthropic API; retry after {retry}s"
-        ) from exc
-    except anthropic.APIStatusError as exc:
-        raise ExtractionError(
-            f"the Anthropic API returned {exc.status_code}: {exc.message}"
-        ) from exc
-    except anthropic.APIConnectionError as exc:
-        raise ExtractionError(
-            f"could not reach the Anthropic API — check the network ({exc})"
-        ) from exc
-    elapsed = time.monotonic() - started
+                },
+                {
+                    "type": "text",
+                    "text": (
+                        "Transcribe this receipt. Report the tip and total "
+                        "boxes exactly as they appear, including any "
+                        "handwriting."
+                    ),
+                },
+            ],
+        }],
+    }
 
-    if response.stop_reason == "refusal":
-        raise ExtractionError("the model declined to read this image")
+    last_malformed: Exception | None = None
+    for attempt in range(MALFORMED_RESPONSE_RETRIES + 1):
+        started = time.monotonic()
+        try:
+            response = client.messages.parse(**request)
+        except anthropic.AuthenticationError as exc:
+            raise ExtractionError(
+                "the Anthropic API rejected the credentials — set "
+                f"ANTHROPIC_API_KEY or run `ant auth login` ({exc.status_code})"
+            ) from exc
+        except anthropic.RateLimitError as exc:
+            retry = exc.response.headers.get("retry-after", "unknown")
+            raise ExtractionError(
+                f"rate limited by the Anthropic API; retry after {retry}s"
+            ) from exc
+        except anthropic.APIStatusError as exc:
+            raise ExtractionError(
+                f"the Anthropic API returned {exc.status_code}: {exc.message}"
+            ) from exc
+        except anthropic.APIConnectionError as exc:
+            raise ExtractionError(
+                f"could not reach the Anthropic API — check the network ({exc})"
+            ) from exc
+        except pydantic.ValidationError as exc:
+            # messages.parse() raises here when the model's own JSON is
+            # malformed — not sent to us broken, generated broken. Retrying
+            # sends a fresh request; it is not re-parsing the same bytes.
+            last_malformed = exc
+            continue
+        elapsed = time.monotonic() - started
 
-    parsed = response.parsed_output
-    if parsed is None:
-        raise ExtractionError(
-            f"the model returned no structured output (stop_reason="
-            f"{response.stop_reason})"
-        )
+        if response.stop_reason == "refusal":
+            raise ExtractionError("the model declined to read this image")
 
-    result = interpret(parsed)
-    result.model = model
-    result.seconds = elapsed
-    result.input_tokens = response.usage.input_tokens
-    result.output_tokens = response.usage.output_tokens
-    return result
+        parsed = response.parsed_output
+        if parsed is None:
+            raise ExtractionError(
+                f"the model returned no structured output (stop_reason="
+                f"{response.stop_reason})"
+            )
+
+        result = interpret(parsed)
+        result.model = model
+        result.seconds = elapsed
+        result.input_tokens = response.usage.input_tokens
+        result.output_tokens = response.usage.output_tokens
+        return result
+
+    raise ExtractionError(
+        f"the model's response could not be parsed after "
+        f"{MALFORMED_RESPONSE_RETRIES + 1} attempt(s) ({last_malformed})"
+    ) from last_malformed
 
 
 def extract_from_path(

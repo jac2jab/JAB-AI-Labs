@@ -25,11 +25,11 @@ Then open `http://<this-machine's-lan-ip>:8000` on the phone.
 |---|---|
 | Amount interpretation, retention policy, archive, accounts | **Verified.** 21 + 6 + 20 + 15 checks, all passing |
 | The whole web loop — upload, queue, review, file, search, export, PDF, cleanup, access control | **Verified.** 55 end-to-end checks against real HTTP and real SQLite |
-| **Extraction accuracy on real receipts** | **Not yet measured.** No API key on this machine and no photographs of real receipts. The table below is empty on purpose |
+| **Extraction accuracy on real receipts** | **Measured.** 5 photographs, 2 models, 30 checkable fields. See below |
 
-Everything except the model call has been run. The model call itself has been
-exercised only against a stub. **Nothing here claims Claude reads receipts well,
-because that has not been measured yet.**
+Everything, including the model call, has now been run against something real.
+The number below is small — five receipts — and is reported as exactly that,
+not generalized past what it can support.
 
 ```powershell
 python amounts.py        # how a written amount is interpreted
@@ -39,17 +39,46 @@ python auth.py           # accounts and sessions
 python selftest_app.py   # the whole loop, end to end
 ```
 
-### Extraction accuracy — to be filled in by measurement
+### Extraction accuracy — measured on 5 real, photographed receipts
+
+Method fixed in advance: vendor, date, subtotal, tax, tip, total, and card
+digits checked against the physical paper by hand. A field the receipt does
+not print (most have no subtotal/tax line) is excluded from the count rather
+than marked wrong or right. `--compare` runs both models on the same photo.
 
 | Receipt | Model | Fields correct | Wrong fields | Seconds | Cost |
 |---|---|---|---|---|---|
-| _pending real photographs_ | | | | | |
+| Gas (Refuel #1180) | opus-5 | 5/5 | — | 82.1 | $0.042 |
+| Gas (Refuel #1180) | sonnet-5 | 5/5 | — | 8.5 | $0.026 |
+| Lowe's (Korky, warranty item) | opus-5 | 7/7 | — | 21.9 | $0.071 |
+| Lowe's (Korky, warranty item) | sonnet-5 | 7/7 | — | 15.0 | $0.038 |
+| Ruckus (handwritten tip) | opus-5 | 6/6 | — | 9.6 | $0.040 |
+| Ruckus (handwritten tip) | sonnet-5 | 5/6 | tip — read `0-` for a tip written `6-` | 9.5 | $0.026 |
+| Target (wrinkled, discount + 2 tax lines) | opus-5 | 6/6\* | — | 14.0 | $0.052 |
+| Target (wrinkled, discount + 2 tax lines) | sonnet-5 | 6/6\* | — | 10.2 | $0.030 |
+| Pizza Hyena (handwritten tip) | opus-5 | 6/6 | — | 98.2 | $0.041 |
+| Pizza Hyena (handwritten tip) | sonnet-5 | 6/6 | — | 6.3 | $0.022 |
 
-The method is fixed in advance so the result cannot be flattered: photograph a
-thermal slip, a crumpled receipt, a restaurant slip with a handwritten tip, and
-a big-box receipt with a warranty item; run each through `claude-opus-5` and
-`claude-sonnet-5`; count fields correct out of fields present; name every field
-that was wrong.
+**Totals: opus-5 30/30 core fields correct; sonnet-5 29/30.**
+Opus-5 averaged **$0.049 and 45.2s** per receipt (two of five calls ran
+80–98s). Sonnet-5 averaged **$0.028 and 9.9s**, consistently, with no call over
+16s. On this sample, opus-5 traded roughly 1.7x the cost and 4.5x the latency
+— with two real outliers past a minute — for one fewer misread handwritten
+character. `RECEIPT_MODEL=claude-sonnet-5` is one env var away if that
+trade stops looking worth it as the sample grows; the default stays
+`claude-opus-5` for now on the strength of getting every field right.
+
+\* Target's receipt applies a Target Circle discount and two separate NC tax
+lines the flat `subtotal`/`tax`/`tip`/`total` schema has no field for. Both
+models correctly refused to force two numbers into one field and reported
+`tax_raw` as unreadable rather than guessing — counted here as correct
+behavior, not a wrong field. See **Known limits**.
+
+**One receipt (Ruckus) had a real arithmetic error already on the paper** —
+the tip was added after the total was totaled, so the printed total is short
+by the tip amount. Both models correctly flagged the reconciliation mismatch
+regardless of which one read the handwriting right, which is what that check
+exists for: it does not need to know whose mistake it is looking at.
 
 Synthetic receipts (`python make_fixture.py`) exist and are **not** used for
 this number. They are crisp rendered text; the Daily Brief already learned what
@@ -216,8 +245,20 @@ volume.
 
 ## Known limits
 
-- **Extraction accuracy is unmeasured.** The table above is empty because no
-  real receipt has been through it yet.
+- **The flat `subtotal`/`tax`/`tip`/`total` schema has no field for a discount
+  or a second tax line.** Measured on a real Target receipt: a 5% card
+  discount plus two separate NC tax rates (clothing vs. grocery) don't fit
+  four fields. Both models correctly declined to guess rather than force two
+  numbers into one — but the receipt still can't be represented exactly as
+  printed. An optional `discount` field and multiple tax lines would fix it;
+  not built, because it is a schema change worth deciding on rather than
+  slipping in
+- **A malformed model response is retried once**, added after a live run on
+  `claude-opus-5` produced truncated, unparseable JSON — the same
+  repetition-loop shape the SE Demo Generator documented in a small local
+  model, this time from a large hosted one. Retrying resolved it both times it
+  was tested; the failure is intermittent, so "fixed" is not a claim this
+  makes — only that a free retry recovers it when it happens
 - **The PDF is searchable, not word-positioned.** True searchable scans place
   each word invisibly over its own spot in the image, which needs per-word
   bounding boxes a vision model does not return. Searching the PDF for a vendor
