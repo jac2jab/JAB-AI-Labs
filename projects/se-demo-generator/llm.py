@@ -36,6 +36,21 @@ REQUEST_TIMEOUT_SECONDS = 600
 # group that completes naturally uses around 400 tokens.
 MAX_OUTPUT_TOKENS = int(os.environ.get("SEDG_MAX_OUTPUT_TOKENS", "1200"))
 
+# Ollama seeds every request randomly unless told otherwise, so two identical
+# runs disagree and any count taken across them carries an unstated margin.
+# The Daily Brief found this the expensive way - two identical relevance runs
+# disagreed on two of 25 stories, and every figure measured before a seed was
+# added should have carried that margin.
+#
+# Seed only. Temperature is deliberately left alone: this project generates
+# open-ended prose with a small model, and greedy decoding raises the risk of
+# the repetition loop that MAX_OUTPUT_TOKENS exists to bound. A fixed seed
+# makes a rerun comparable at the sampling temperature already in use, which is
+# the property actually wanted.
+#
+# A fixed seed makes a rerun comparable. It does not make the answer correct.
+OLLAMA_SEED = int(os.environ.get("SEDG_OLLAMA_SEED", "0"))
+
 
 class ModelUnavailable(Exception):
     """Raised when no backend can serve a request."""
@@ -50,7 +65,12 @@ def _ollama_ready() -> bool:
         return False
 
 
-def _complete_ollama(system: str, user: str, json_schema: dict | None = None) -> str:
+def _complete_ollama(
+    system: str,
+    user: str,
+    json_schema: dict | None = None,
+    max_tokens: int | None = None,
+) -> str:
     """Run a completion against a local Ollama model.
 
     When a schema is supplied, this asks Ollama for JSON mode rather than
@@ -73,7 +93,10 @@ def _complete_ollama(system: str, user: str, json_schema: dict | None = None) ->
             {"role": "user", "content": user},
         ],
         "stream": False,
-        "options": {"num_predict": MAX_OUTPUT_TOKENS},
+        "options": {
+            "num_predict": max_tokens or MAX_OUTPUT_TOKENS,
+            "seed": OLLAMA_SEED,
+        },
     }
 
     if json_schema is not None:
@@ -114,7 +137,12 @@ def _anthropic_ready() -> bool:
     return True
 
 
-def _complete_anthropic(system: str, user: str, json_schema: dict | None = None) -> str:
+def _complete_anthropic(
+    system: str,
+    user: str,
+    json_schema: dict | None = None,
+    max_tokens: int | None = None,
+) -> str:
     """Run a completion against the Anthropic API."""
     import anthropic
 
@@ -129,7 +157,7 @@ def _complete_anthropic(system: str, user: str, json_schema: dict | None = None)
     try:
         response = client.messages.create(
             model=ANTHROPIC_MODEL,
-            max_tokens=4096,
+            max_tokens=max_tokens or 4096,
             system=system,
             messages=[{"role": "user", "content": user}],
             **extra,
@@ -162,19 +190,32 @@ def active_backend() -> str:
 
 
 def complete(
-    system: str, user: str, json_schema: dict | None = None
+    system: str,
+    user: str,
+    json_schema: dict | None = None,
+    max_tokens: int | None = None,
 ) -> tuple[str, str]:
     """Run a completion. Returns the text and the backend that produced it.
 
     Pass ``json_schema`` to constrain the output to that shape rather than
     hoping the model honours a formatting instruction.
+
+    Pass ``max_tokens`` when the answer is known to be short. The default is
+    sized for a prose section group, and a call that should emit thirty tokens
+    inheriting a twelve-hundred-token budget is not free: at the measured ~4
+    tokens/second a model that decides to be discursive turns an eight-second
+    classification into a five-minute one. The cap is the same control as
+    MAX_OUTPUT_TOKENS, sized per call.
     """
     if _ollama_ready():
-        return _complete_ollama(system, user, json_schema), f"ollama:{OLLAMA_MODEL}"
+        return (
+            _complete_ollama(system, user, json_schema, max_tokens),
+            f"ollama:{OLLAMA_MODEL}",
+        )
 
     if _anthropic_ready():
         return (
-            _complete_anthropic(system, user, json_schema),
+            _complete_anthropic(system, user, json_schema, max_tokens),
             f"anthropic:{ANTHROPIC_MODEL}",
         )
 
