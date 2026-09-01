@@ -4,6 +4,8 @@
 
 ## Endpoint, server, EDR or XDR
 
+**Solution area:** EDR/XDR
+
 **Triggered by:** alert, false positive, isolate, logged in, password reset, unsanctioned, vulnerab, endpoint, edr, triage, soc analyst, soc lead
 
 **Audience:** technical — Manager, Analyst, Administrator; executive — CISO, Deputy CISO, CIO, VP, Director; both — one or more technical plus one or more executive

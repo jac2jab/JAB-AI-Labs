@@ -24,6 +24,7 @@ from pathlib import Path
 
 from llm import ModelUnavailable, complete
 from packs import available_packs, load_metadata, load_pack, pack_status
+from solution_areas import classify, counterparts
 
 BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "output"
@@ -424,8 +425,13 @@ def main() -> None:
         print(f"              {found}/{len(profile)} fields populated")
 
         # Narrow the demo flows to the solution areas this opportunity actually
-        # signals. A multi-product vendor has one flow per area, and injecting
-        # all of them buries the relevant one.
+        # calls for. A multi-product vendor has one flow per area, and
+        # injecting all of them buries the relevant one.
+        #
+        # Two mechanisms, because they fail differently. The classifier reads
+        # the whole profile and handles phrasing nobody anticipated; the
+        # trigger floor fires on unambiguous strings whatever the classifier
+        # decided. Neither is trusted alone.
         signals = [
             str(item)
             for key in ("stated_pains", "current_environment", "compelling_event")
@@ -435,7 +441,39 @@ def main() -> None:
                 else [profile.get(key, "")]
             )
         ]
-        knowledge, _, selected_areas = load_pack(args.vendor, signals)
+
+        print("Stage 1b — classifying solution areas...")
+        try:
+            areas, detail, area_backend = classify(profile)
+        except ModelUnavailable as error:
+            # Not fatal. Trigger matching still selects flows without this, so
+            # a classifier failure degrades the selection rather than the run.
+            areas, detail = [], {"why": {}, "dropped": []}
+            print(f"              classifier unavailable ({error}); triggers only")
+        else:
+            if areas:
+                for area in areas:
+                    reason = (detail["why"] or {}).get(area, "")
+                    print(f"              {area}" + (f" - {reason}" if reason else ""))
+            else:
+                print("              no area identified; triggers only")
+
+            if detail["dropped"]:
+                # Labels outside SOLUTION_AREAS, discarded in code. Printed
+                # because a model reaching for an area the vendor has no label
+                # for is a signal about the label set, not just noise.
+                print(f"              discarded (not a known area): "
+                      f"{', '.join(detail['dropped'])}")
+
+            missing = counterparts(areas)
+            if missing:
+                # Posture without response, or the reverse. Not added to the
+                # plan - just named, because whether the demo should cover
+                # both is the SE's call, not the tool's.
+                print(f"              no counterpart flow selected for: "
+                      f"{', '.join(missing)}")
+
+        knowledge, _, selected_areas = load_pack(args.vendor, signals, areas)
 
         if selected_areas:
             print(f"              demo flows selected: {', '.join(selected_areas)}")

@@ -30,6 +30,126 @@ RESERVED_NAMES = frozenset({"generic"})
 UNWRITTEN_MARKER = "<!-- UNWRITTEN -->"
 
 
+# The vendor's solution areas, defined once and used for four things: the
+# closed set the classifier may choose from, the vocabulary for `## ` headings
+# in demo_flows.md and competitor_positioning.md, the universal trigger floor,
+# and the posture/response pairing below.
+#
+# WHY A CLASSIFIER RATHER THAN A LONGER TRIGGER LIST
+# The set of things a customer might say is unbounded, so a hand-kept list of
+# phrases cannot close it - the same wall the Daily Brief hit with keyword
+# relevance scoring. What IS bounded is this list: the areas a demo can cover.
+# So a model classifies the profile into these labels and the code enforces
+# membership, exactly as relevance.py picks one of six categories and never
+# emits a score.
+#
+# `says` is the definition the classifier is given, and it is deliberately
+# written in CUSTOMER language rather than product language. CSPM, DSPM and
+# Workload Security are three products but one word ("cloud") in a customer's
+# mouth; described by what the customer complains about they separate cleanly,
+# described by product name they collapse into each other.
+#
+# `triggers` are the universal precision floor - unambiguous strings that
+# select an area whatever the classifier decides. They do NOT need to be
+# exhaustive; that is the classifier's job now. They only need to be correct.
+# Kept short and acronym-shaped on purpose: a bare `soc` was tried and fired on
+# "social engineering", "SOC 2" and "associate". A pack's own
+# `**Triggered by:**` line adds vendor- and deal-specific phrases on top.
+#
+# `pairs_with` is the proactive/reactive counterpart. Posture answers "how do I
+# stop being surprised", response answers "what happens when it lands", and a
+# plan carrying only one of the two leaves the other question hanging. `None`
+# means the pairing is not decided yet - it is SE judgment, so it is left blank
+# rather than guessed.
+SOLUTION_AREAS: dict[str, dict] = {
+    "EDR/XDR": {
+        "mode": "response",
+        "says": (
+            "Too many alerts to triage, no way to see how an incident spread "
+            "across endpoint, server, email and network, slow investigation, "
+            "analysts who take months to become useful, ransomware."
+        ),
+        "triggers": ("edr", "xdr", "endpoint", "triage", "soc analyst", "soc lead"),
+        "pairs_with": "ASRM",
+    },
+    "ASRM": {
+        "mode": "posture",
+        "says": (
+            "No single view of what is exposed and how risky it is, no way to "
+            "show the board whether risk went up or down, cannot tell which "
+            "vulnerability exposure to fix first. Gives visibility and "
+            "recommendations for vulnerability exposure - it does NOT do "
+            "vulnerability management, so do not read patching into it."
+        ),
+        "triggers": ("asrm", "attack surface", "risk score", "cyber risk"),
+        "pairs_with": "EDR/XDR",
+    },
+    "CSPM": {
+        "mode": "posture",
+        "says": (
+            "Do not know what is exposed or misconfigured in the cloud "
+            "accounts, no idea how many accounts there are, compliance "
+            "findings against cloud configuration."
+        ),
+        "triggers": ("cspm", "misconfigur", "cloud posture"),
+        "pairs_with": "Workload Security",
+    },
+    "Workload Security": {
+        "mode": "response",
+        "says": (
+            "Protecting the things actually running - servers, VMs, "
+            "containers, Kubernetes. Runtime attacks, unpatched servers that "
+            "cannot be taken down, workloads no agent covers."
+        ),
+        "triggers": ("workload", "container", "kubernetes", "runtime protection"),
+        "pairs_with": "CSPM",
+    },
+    "Email Security": {
+        "mode": "response",
+        "says": (
+            "Users clicking phishing links, business email compromise, "
+            "malicious attachments, and what the current gateway misses."
+        ),
+        "triggers": ("phishing", "email gateway", "business email compromise", "bec"),
+        "pairs_with": None,
+    },
+    "Network Security": {
+        "mode": "response",
+        "says": (
+            "Cannot see what is moving laterally, unmanaged or unagentable "
+            "devices, OT and plant networks, intrusion detection and "
+            "prevention, east-west traffic."
+        ),
+        "triggers": ("lateral movement", "east-west", "network detection", "ot network"),
+        "pairs_with": None,
+    },
+    "DSPM": {
+        "mode": "posture",
+        "says": (
+            "Do not know where sensitive data lives, who can reach it, or "
+            "whether it left. Data residency and classification."
+        ),
+        "triggers": ("dspm", "sensitive data", "data classification", "data residency"),
+        "pairs_with": None,
+    },
+    "ISPM": {
+        "mode": "posture",
+        "says": (
+            "Over-privileged accounts, stale or orphaned accounts, service "
+            "accounts nobody owns, MFA gaps, access review evidence for an "
+            "audit."
+        ),
+        "triggers": ("ispm", "identity posture", "over-privileged", "access review"),
+        "pairs_with": None,
+    },
+}
+
+# How many areas may reach the plan. A real discovery call surfaces several,
+# but injecting all eight rebuilds the burying problem select_demo_flows was
+# written to solve. The classifier ranks; the cap is applied in code.
+MAX_SELECTED_AREAS = 3
+
+
 # Each section carries the question it exists to answer. A blank file is
 # paralyzing; a file that asks a specific question is a form to fill in.
 SECTIONS: dict[str, dict[str, str]] = {
@@ -58,11 +178,17 @@ SECTIONS: dict[str, dict[str, str]] = {
             "than five outlines, and you can rerun the generator immediately to see\n"
             "it used.\n\n"
             "---\n\n"
-            "## <Solution area, e.g. Endpoint and XDR>\n\n"
-            "**Triggered by:** comma-separated discovery signals that make this the\n"
-            "right flow — the words a customer actually says. These are matched\n"
-            "against the extracted profile to choose the flow, so write what the\n"
-            "customer says, not what you call it internally.\n"
+            "## <Heading in your own words, e.g. Endpoint, server, EDR or XDR>\n\n"
+            "**Solution area:** exactly one of the labels in SOLUTION_AREAS.\n"
+            "This is the machine-readable label; the heading above stays prose.\n"
+            "A flow declaring one is selected whenever the classifier picks that\n"
+            "area, whatever words the customer used to get there.\n\n"
+            "**Triggered by:** comma-separated discovery signals — the words a\n"
+            "customer actually says. These no longer have to be exhaustive; the\n"
+            "classifier handles paraphrase, and these are the floor that fires\n"
+            "regardless of what it decides. They only have to be *correct*.\n"
+            "Matching is plain lowercased substring, so keep them short and\n"
+            "unambiguous — a bare `soc` fires on \"social engineering\".\n"
             "*(e.g. alert fatigue, too many alerts, endpoint, EDR, triage time,\n"
             "SOC analyst, ransomware)*\n\n"
             "**Audience:** technical | executive | both  \n"
@@ -259,7 +385,11 @@ def pack_status(vendor: str) -> dict:
     }
 
 
-def load_pack(vendor: str, signals: list[str] | None = None) -> tuple[str, dict, list[str]]:
+def load_pack(
+    vendor: str,
+    signals: list[str] | None = None,
+    areas: list[str] | None = None,
+) -> tuple[str, dict, list[str]]:
     """Load a vendor pack's written sections into one knowledge block.
 
     Skeleton sections are skipped rather than passed to the model — template
@@ -291,8 +421,8 @@ def load_pack(vendor: str, signals: list[str] | None = None) -> tuple[str, dict,
     for filename in status["written"]:
         text = (pack_dir / filename).read_text(encoding="utf-8")
 
-        if filename == "demo_flows.md" and signals:
-            text, selected_areas = select_demo_flows(text, signals)
+        if filename == "demo_flows.md" and (signals or areas):
+            text, selected_areas = select_demo_flows(text, signals or [], areas)
 
         parts.append(text)
 
@@ -318,18 +448,43 @@ def parse_demo_flows(text: str) -> list[dict]:
             else []
         )
 
-        flows.append({"area": area, "triggers": triggers, "text": f"## {block}".rstrip()})
+        # The machine-readable label, when the flow declares one. The heading
+        # stays prose so it reads to a human; this is what the classifier's
+        # output is matched against. A flow without one is still selectable by
+        # its triggers, so a pack written before this keeps working.
+        label = re.search(r"\*\*Solution area:\*\*\s*(.+)", block)
+
+        flows.append(
+            {
+                "area": area,
+                "solution_area": label.group(1).strip() if label else None,
+                "triggers": triggers,
+                "text": f"## {block}".rstrip(),
+            }
+        )
 
     return flows
 
 
-def select_demo_flows(text: str, signals: list[str]) -> tuple[str, list[str]]:
+def select_demo_flows(
+    text: str, signals: list[str], areas: list[str] | None = None
+) -> tuple[str, list[str]]:
     """Choose the flows whose triggers appear in the opportunity's signals.
 
     Injecting every flow for a multi-product vendor buries the relevant one and
     burns context on four irrelevant ones. Selection is done here in code rather
     than by asking the model to pick, for the same reason section membership is:
     a rule the code enforces holds, and a rule the prompt requests does not.
+
+    Two mechanisms, unioned, because they fail differently:
+
+    - `areas` are the classifier's labels. They carry recall: a customer who
+      says "our field techs' laptops go weeks without checking in" never types
+      a trigger phrase, and the classifier still reaches EDR/XDR.
+    - `signals` are substring-matched against each flow's `**Triggered by:**`
+      line. That carries the floor: an unambiguous string fires whatever the
+      classifier decided, so a model having an off day cannot silently drop a
+      flow the customer explicitly asked for.
 
     Falls back to the whole file when nothing matches, so a pack whose triggers
     are poorly chosen degrades to previous behaviour instead of going silent.
@@ -340,12 +495,18 @@ def select_demo_flows(text: str, signals: list[str]) -> tuple[str, list[str]]:
         return text, []
 
     haystack = " ".join(signals).lower()
+    wanted = {area.strip().lower() for area in (areas or []) if area.strip()}
 
-    matched = [
-        flow
-        for flow in flows
-        if any(trigger and trigger in haystack for trigger in flow["triggers"])
-    ]
+    def is_selected(flow: dict) -> bool:
+        """Classifier label first, trigger floor second. Either is enough."""
+        label = (flow.get("solution_area") or "").strip().lower()
+
+        if label and label in wanted:
+            return True
+
+        return any(trigger and trigger in haystack for trigger in flow["triggers"])
+
+    matched = [flow for flow in flows if is_selected(flow)]
 
     if not matched:
         return text, []
