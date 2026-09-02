@@ -94,14 +94,27 @@ class ReceiptFields(BaseModel):
     tax_raw: str | None = Field(
         default=None, description="Tax, exactly as printed. Null if absent."
     )
+    has_tip_line: bool = Field(
+        description=(
+            "True if the receipt has a printed TIP or GRATUITY line at all — "
+            "typical of a restaurant, bar, or salon receipt, whether or not "
+            "anything is written in it. False for gas, grocery, and most "
+            "retail receipts, which never have one. This is a structural fact "
+            "about the receipt, the same kind of question as "
+            "has_durable_goods, and it is asked separately from tip_raw so "
+            "'no tip line exists' and 'the tip line is illegible' are never "
+            "confused with each other."
+        )
+    )
     tip_raw: str | None = Field(
         default=None,
         description=(
+            "Only meaningful when has_tip_line is true; otherwise leave null. "
             "The tip box, transcribed EXACTLY as it appears including any "
             "handwriting. If it holds '10-' return '10-'. If it holds a single "
             "dash return '-'. If it says CASH return 'CASH'. If the box is "
-            "printed but empty return an empty string. If there is no tip line "
-            "at all return null. Never convert, never compute, never infer."
+            "printed but empty return an empty string. Never convert, never "
+            "compute, never infer."
         ),
     )
     total_raw: str | None = Field(
@@ -169,6 +182,11 @@ Restaurant slips are the hard case. The printed amount is the pre-tip charge;
 the handwritten TOTAL below it is what was actually charged. Report both — the
 printed one as subtotal_raw or the amount it is labelled, the handwritten one as
 total_raw. Transcribe the tip box exactly, whatever is in it.
+
+Decide has_tip_line by whether a TIP or GRATUITY line is printed on the paper
+at all, not by whether anything is written in it. A gas or grocery receipt has
+no such line and has_tip_line is false; a restaurant check with a blank tip
+box still has_tip_line true.
 
 If something is illegible, say so in uncertain_fields rather than guessing. A
 reported doubt costs one glance at the review screen. A confident wrong number
@@ -262,16 +280,21 @@ def interpret(fields: ReceiptFields) -> Extraction:
     tax, notes["tax"] = amounts.interpret_money(fields.tax_raw)
     total, notes["total"] = amounts.interpret_money(fields.total_raw)
 
-    # A receipt with no tip line is not a receipt with a missing tip — it is a
-    # shop, not a restaurant. Settling that here, before reconciliation, stops
-    # the derivation logic from "recovering" a tip nobody was ever asked for
-    # and flagging a clean receipt for review.
-    if fields.tip_raw is None:
+    # has_tip_line is a structural fact reported the same way has_durable_goods
+    # is — a direct yes/no, not something inferred from whether tip_raw happens
+    # to be null. A gas or grocery receipt was never going to have a tip; that
+    # is a different situation from a restaurant receipt whose tip box the
+    # model failed to transcribe, and conflating the two either invents a
+    # tip nobody was asked for, or hides a real illegible box behind "there
+    # was nothing to read."
+    if not fields.has_tip_line:
         tip, notes["tip"] = Decimal("0.00"), "no tip line on this receipt"
     else:
         tip, notes["tip"] = amounts.interpret_tip(fields.tip_raw)
 
-    checked, problems = amounts.reconcile(subtotal, tax, tip, total)
+    checked, problems = amounts.reconcile(
+        subtotal, tax, tip, total, tip_applicable=fields.has_tip_line
+    )
 
     last4, last4_note = _validate_last4(fields.card_last4)
     if last4_note:
@@ -425,7 +448,8 @@ def _report(path: str, result: Extraction) -> None:
     print(f"  subtotal      {_money(result.amounts['subtotal'])}")
     print(f"  tax           {_money(result.amounts['tax'])}")
     print(f"  tip           {_money(result.amounts['tip'])}"
-          f"      raw: {f.tip_raw!r}")
+          f"      raw: {f.tip_raw!r}"
+          f"   has_tip_line={f.has_tip_line}")
     print(f"  total         {_money(result.amounts['total'])}"
           f"      raw: {f.total_raw!r}")
     print(f"  card          {'**** ' + result.card_last4 if result.card_last4 else '—'}"

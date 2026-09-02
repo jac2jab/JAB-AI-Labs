@@ -117,6 +117,26 @@ And when the tip box is genuinely illegible but the other three amounts are
 readable, the tip is *derived* rather than guessed — `total - subtotal - tax`,
 with the derivation stated on screen.
 
+**"No tip line" and "illegible tip line" are asked as two different questions,
+not inferred from one.** A gas or grocery receipt was never going to have a
+tip; a restaurant receipt whose tip box the model failed to read is a different
+situation entirely. Early on these were conflated — a null `tip_raw` doing
+double duty as both "structurally absent" and "present but unreadable" — which
+meant a receipt with no tip line risked its arithmetic check quietly
+implicating a tip that could never have existed. `has_tip_line` is now a
+direct yes/no the model reports, the same kind of question as
+`has_durable_goods`, asked before `tip_raw` is even considered. Code then
+knows which situation it's in, so a Target receipt whose subtotal and total
+don't reconcile says so honestly —
+
+```
+amounts do not add up: subtotal 16.68 + tax 0 = 16.68, but total reads 16.57
+(off by 0.11) — no tip line on this receipt, so the mismatch is in subtotal,
+tax, or total
+```
+
+— instead of blaming a tip that was never in question.
+
 This is the repo's recurring lesson, applied on purpose rather than after being
 burned: **enforce in code what you would otherwise ask a model to do.** The SE
 Demo Generator relearned it four separate times.

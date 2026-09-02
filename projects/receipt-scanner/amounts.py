@@ -136,12 +136,21 @@ def reconcile(
     tip: Decimal | None,
     total: Decimal | None,
     tolerance: Decimal = Decimal("0.02"),
+    tip_applicable: bool = True,
 ) -> tuple[dict[str, Decimal | None], list[str]]:
     """Check the amounts against each other, and derive one if it is missing.
 
     Arithmetic is the control on the handwriting. A model that reads ``10-`` as
     ``100`` produces a sum that does not close, and gets caught here rather than
     at tax time.
+
+    ``tip_applicable`` distinguishes "this receipt has no tip line" from "the
+    tip line couldn't be read." A gas or grocery receipt is the first case, and
+    passing ``tip_applicable=False`` for one means: never invent a tip to
+    explain a gap, never blame a tip line that does not exist, and when
+    subtotal + tax does not reach total, say so without mentioning tip at all
+    — on a receipt structurally incapable of having one, the mismatch can only
+    be in subtotal, tax, or total.
 
     Returns the amounts (possibly with one derived) and a list of human-readable
     problems. An empty list means the receipt adds up.
@@ -155,9 +164,11 @@ def reconcile(
         return amounts, problems
 
     # Derive a single missing piece rather than flagging it. An illegible tip
-    # box on an otherwise legible receipt is arithmetic, not guesswork.
+    # box on an otherwise legible receipt is arithmetic, not guesswork — but
+    # only when a tip is possible at all. A gas receipt with a short subtotal
+    # is missing a tax line, not a phantom tip.
     if total is not None and subtotal is not None:
-        if tip is None and tax is not None:
+        if tip_applicable and tip is None and tax is not None:
             derived = (total - subtotal - tax).quantize(CENT)
             if derived >= 0:
                 amounts["tip"] = tip = derived
@@ -173,16 +184,24 @@ def reconcile(
         computed = subtotal + (tax or Decimal("0.00")) + (tip or Decimal("0.00"))
         gap = (computed - total).quantize(CENT)
         if abs(gap) > tolerance:
-            problems.append(
-                f"amounts do not add up: subtotal {subtotal} + tax {tax or 0} "
-                f"+ tip {tip or 0} = {computed}, but total reads {total} "
-                f"(off by {gap})"
-            )
+            if tip_applicable:
+                problems.append(
+                    f"amounts do not add up: subtotal {subtotal} + tax "
+                    f"{tax or 0} + tip {tip or 0} = {computed}, but total "
+                    f"reads {total} (off by {gap})"
+                )
+            else:
+                problems.append(
+                    f"amounts do not add up: subtotal {subtotal} + tax "
+                    f"{tax or 0} = {computed}, but total reads {total} "
+                    f"(off by {gap}) — no tip line on this receipt, so the "
+                    f"mismatch is in subtotal, tax, or total"
+                )
 
     if total is not None and total < 0:
         problems.append(f"total is negative ({total}) — a refund, or a misread")
 
-    if tip is not None and total is not None and total > 0 and tip > total:
+    if tip_applicable and tip is not None and total is not None and total > 0 and tip > total:
         problems.append(f"tip {tip} is larger than the total {total}")
 
     if known < 2:
@@ -224,6 +243,18 @@ _RECONCILE_CASES = [
      (Decimal("29.31"), Decimal("2.21"), Decimal("0.00"), Decimal("31.52")), 0),
 ]
 
+_NO_TIP_LINE_CASES = [
+    ("gas receipt, clean", (Decimal("41.01"), None, Decimal("41.01")), 0),
+    # subtotal + tax genuinely doesn't reach total. On a receipt with no tip
+    # line this must be blamed on subtotal/tax/total, never on a phantom tip.
+    ("misread total, no tip line to blame it on",
+     (Decimal("29.31"), Decimal("2.21"), Decimal("35.95")), 1, "no tip line"),
+    # A gap this large, with tip_applicable=False, must never be
+    # "recovered" by inventing a tip out of the arithmetic.
+    ("large gap is never absorbed into an invented tip",
+     (Decimal("16.68"), None, Decimal("16.57")), 1, "no tip line"),
+]
+
 
 def _self_test() -> int:
     failures = 0
@@ -242,6 +273,24 @@ def _self_test() -> int:
     for label, (sub, tax, tip, total), expected_problems in _RECONCILE_CASES:
         _, problems = reconcile(sub, tax, tip, total)
         ok = len(problems) == expected_problems
+        failures += not ok
+        print(f"{'ok  ' if ok else 'FAIL'}  {label}")
+        for p in problems:
+            print(f"        {p}")
+
+    print()
+    print("reconciliation — no tip line at all (tip_applicable=False)")
+    print("-" * 66)
+    for label, (sub, tax, total), expected_problems, *rest in _NO_TIP_LINE_CASES:
+        amounts_out, problems = reconcile(
+            sub, tax, Decimal("0.00"), total, tip_applicable=False
+        )
+        ok = len(problems) == expected_problems
+        # A gap must never be laundered into an invented tip when there is no
+        # tip line to have produced one.
+        ok = ok and amounts_out["tip"] == Decimal("0.00")
+        if rest:
+            ok = ok and all("tip" not in p or rest[0] in p for p in problems)
         failures += not ok
         print(f"{'ok  ' if ok else 'FAIL'}  {label}")
         for p in problems:

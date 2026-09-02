@@ -58,7 +58,7 @@ def stub_extraction(**fields):
     defaults = dict(
         vendor="The Angus Barn", purchased_on="2026-08-01",
         purchased_on_raw="08/01/26", subtotal_raw="42.00", tax_raw="3.36",
-        tip_raw="10-", total_raw="55.36", card_last4="4242",
+        has_tip_line=True, tip_raw="10-", total_raw="55.36", card_last4="4242",
         payment_method="VISA", category="Restaurant", has_durable_goods=False,
         handwritten_amounts=True, uncertain_fields=[],
         transcript="THE ANGUS BARN\nRIBEYE 12OZ 38.00\nTIP 10-\nTOTAL 55.36",
@@ -174,9 +174,10 @@ def main() -> int:
     print("-" * 72)
     stub_extraction(
         vendor="Lowe's", purchased_on="2026-03-17", purchased_on_raw="03/17/26",
-        subtotal_raw="29.31", tax_raw="2.21", tip_raw=None, total_raw="31.52",
-        card_last4="8557", category="Home Improvement", has_durable_goods=True,
-        durable_goods_note="DeWalt 20V drill", handwritten_amounts=False,
+        subtotal_raw="29.31", tax_raw="2.21", has_tip_line=False, tip_raw=None,
+        total_raw="31.52", card_last4="8557", category="Home Improvement",
+        has_durable_goods=True, durable_goods_note="DeWalt 20V drill",
+        handwritten_amounts=False,
         transcript="LOWE'S 1247\nDEWALT 20V DRILL 24.98\nTOTAL 31.52",
     )
     with open(hardware, "rb") as fh:
