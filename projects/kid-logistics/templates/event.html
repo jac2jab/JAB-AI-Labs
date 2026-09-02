@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ event.title }}{% endblock %}
+{% block content %}
+
+<p class="sub"><a href="/">&larr; This week</a></p>
+<h1>{{ event.title }}</h1>
+<p class="sub">
+  {{ when }}{% if ends %} &ndash; {{ ends }}{% endif %}
+  {% if event.is_cancelled %} &middot; <span class="tag must">cancelled</span>
+  {% elif event.status == 'changed' %} &middot; <span class="tag warn">changed</span>{% endif %}
+</p>
+
+<div class="btns">
+  <a class="btn" href="/event/{{ event.id }}/change">Something changed</a>
+</div>
+{% if event.is_cancelled %}
+<form method="post" action="/event/{{ event.id }}/reinstate">
+  <button class="btn ghost" type="submit">It&rsquo;s back on</button>
+</form>
+{% endif %}
+
+{% if event.location_name or event.location_address %}
+<div class="card">
+  <h3>Where</h3>
+  <div>{{ event.location_name or event.location_address }}</div>
+  {% if event.location_address and event.location_name %}
+    <div class="small dim">{{ event.location_address }}</div>
+  {% endif %}
+  {% if maps %}
+  <div class="btns">
+    <a class="btn ghost small" href="{{ maps.apple }}">Apple Maps</a>
+    <a class="btn ghost small" href="{{ maps.google }}">Google Maps</a>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if event.bring or event.notes %}
+<div class="card">
+  {% if event.bring %}<h3>Bring</h3><div>{{ event.bring }}</div>{% endif %}
+  {% if event.notes %}<h3 style="margin-top:10px">Notes</h3><div>{{ event.notes }}</div>{% endif %}
+</div>
+{% endif %}
+
+<h2>Who</h2>
+<div class="card flat">
+  {% for c in casting %}
+  <div class="row">
+    <div class="top">
+      <span class="title">
+        {% if c.is_household %}<span class="dot" style="background: {{ c.who.color }}"></span> {% endif %}{{ c.name }}
+      </span>
+      <span class="tag fyi">{{ role_labels.get(c.role, c.role) }}</span>
+    </div>
+    <div class="meta">
+      {% if c.phone %}<a href="{{ tel(c.phone) }}">Call</a>{% else %}no number on file{% endif %}
+      {% if c.who.checkin_url and checkin(c.who.checkin_url) %}
+        &middot; <a href="{{ checkin(c.who.checkin_url) }}">Where are they?</a>
+      {% endif %}
+      &middot;
+      <form method="post" action="/event/{{ event.id }}/uncast" style="display:inline">
+        <input type="hidden" name="casting_id" value="{{ c.id }}">
+        <button type="submit" style="background:none;border:0;padding:0;cursor:pointer;color:inherit;text-decoration:underline;font:inherit;font-size:13px">remove</button>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty">Nobody on this yet &mdash; add someone below, or the app has
+    nobody to tell when it changes.</div>
+  {% endfor %}
+</div>
+
+<form method="post" action="/event/{{ event.id }}/cast" class="card">
+  <h3>Add someone</h3>
+  <label for="who">Person</label>
+  <select id="who" name="who">
+    <optgroup label="Household">
+      {% for p in people %}<option value="person:{{ p.id }}">{{ p.name }}</option>{% endfor %}
+    </optgroup>
+    <optgroup label="Contacts">
+      {% for c in contacts %}<option value="contact:{{ c.id }}">{{ c.name }}</option>{% endfor %}
+    </optgroup>
+  </select>
+  <label for="role">Doing what</label>
+  <select id="role" name="role">
+    {% for value, label in role_labels.items() %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+  </select>
+  <div class="btns"><button class="btn ghost" type="submit">Add</button></div>
+</form>
+
+{% if history %}
+<h2>What has changed</h2>
+{% for h in history %}
+<div class="card">
+  <div class="top">
+    <b>{{ h.label }}</b>
+    <span class="dim small"> &middot; {{ h.when }}, by {{ h.change.made_by }}</span>
+  </div>
+  {% if h.change.note %}<div class="small">{{ h.change.note }}</div>{% endif %}
+  <div class="small dim" style="margin-top:6px">
+    {{ h.change.recipients | length - h.outstanding | length }} of
+    {{ h.change.recipients | length }} told{% if h.outstanding %} &mdash;
+    <a href="/change/{{ h.change.id }}">{{ h.outstanding | map(attribute='name') | join(', ') }} still to tell</a>{% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% endblock %}

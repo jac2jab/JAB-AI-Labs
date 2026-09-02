@@ -1,0 +1,11 @@
+# The schedule itself never goes in git. It holds children's movements, home
+# addresses, and other families' phone numbers.
+data/
+data-demo/
+*.db
+*.db-wal
+*.db-shm
+
+__pycache__/
+*.pyc
+.venv/

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}What changed?{% endblock %}
+{% block content %}
+
+<p class="sub"><a href="/event/{{ event.id }}">&larr; {{ event.title }}</a></p>
+<h1>What changed?</h1>
+<p class="sub">{{ event.title }}, {{ when }}</p>
+
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+{% if not reason %}
+<form method="get" action="/event/{{ event.id }}/change" class="reasons">
+  {% for value, label in reasons %}
+  <button class="btn ghost" name="reason" value="{{ value }}" type="submit">{{ label }}</button>
+  {% endfor %}
+</form>
+
+{% else %}
+<form method="post" action="/event/{{ event.id }}/change" class="card">
+  <input type="hidden" name="reason" value="{{ reason }}">
+
+  {% if reason == 'kid_sick' %}
+    {% if not attending %}
+      <p class="error">Nobody from the household is down as going to this, so
+      there is nothing to tell anyone about. Add who is attending first.</p>
+    {% else %}
+    <label for="sick_person_id">Who is out?</label>
+    <select id="sick_person_id" name="sick_person_id" required>
+      <option value="">Choose&hellip;</option>
+      {% for c in attending %}
+      <option value="{{ c.who.id }}" {% if sick == c.who.id %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+
+    {% if ask_driving %}
+    <fieldset>
+      <legend>They were the only one going from here, and you are driving</legend>
+      <p class="small dim" style="margin:4px 0 8px">
+        This decides whether the other family still has a ride, so the app will
+        not guess it.
+      </p>
+      <label class="check">
+        <input type="radio" name="still_driving" value="yes" required>
+        I am still driving &mdash; the ride stands
+      </label>
+      <label class="check">
+        <input type="radio" name="still_driving" value="no" required>
+        I am staying home &mdash; the ride is off
+      </label>
+    </fieldset>
+    {% else %}
+    <p class="small dim">If this leaves someone without a ride, the next screen
+       will say so.</p>
+    {% endif %}
+  {% endif %}
+
+  {% if reason == 'running_late' %}
+    <label for="late_minutes">How late, roughly?</label>
+    <input type="number" id="late_minutes" name="late_minutes" value="15" min="1" max="240">
+  {% endif %}
+
+  {% if reason == 'location_changed' %}
+    <label for="new_location">Where is it now?</label>
+    <input type="text" id="new_location" name="new_location"
+           placeholder="Field 3, Riverside Park" required>
+  {% endif %}
+
+  <label for="note">Anything to add? (goes into every message)</label>
+  <input type="text" id="note" name="note"
+         placeholder="{% if reason == 'event_cancelled' %}Rained out.{% else %}Sorry for the short notice.{% endif %}">
+
+  <div class="btns">
+    <button class="btn" type="submit">Work out who to tell</button>
+  </div>
+  <p><a class="small dim" href="/event/{{ event.id }}/change">Pick a different reason</a></p>
+</form>
+{% endif %}
+
+{% endblock %}

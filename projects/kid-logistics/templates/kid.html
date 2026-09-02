@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ person.name }}{% endblock %}
+{% block content %}
+
+<p class="sub"><a href="/">&larr; This week</a></p>
+<h1><span class="dot" style="background: {{ person.color }}"></span> {{ person.name }}</h1>
+<p class="sub">Week of {{ monday.day }} {{ monday.strftime('%B') }} &middot;
+   {{ rows | length }} event{{ '' if rows | length == 1 else 's' }}</p>
+
+{% if checkin %}
+<div class="btns"><a class="btn ghost" href="{{ checkin }}">Where are they?</a></div>
+<p class="small dim">Opens the link saved in Settings. Best effort &mdash; neither
+   Find My nor Life360 publishes a documented link format, so this launches a
+   link rather than integrating with either.</p>
+{% endif %}
+
+<div class="card flat">
+  {% for row in rows %}
+  <a class="row {% if row.event.is_cancelled %}cancelled{% endif %}" href="/event/{{ row.event.id }}">
+    <div class="top">
+      <span class="time">{{ row.time }}</span>
+      <span class="title">{{ row.event.title }}</span>
+    </div>
+    <div class="meta">
+      {{ row.day }}
+      {% if row.event.is_cancelled %} &middot; <b>Cancelled</b>{% endif %}
+      {% if row.event.location_name %} &middot; {{ row.event.location_name }}{% endif %}
+      {% if row.drivers %} &middot; {{ row.drivers | join(', ') }} driving{% endif %}
+    </div>
+  </a>
+  {% else %}
+  <div class="empty">Nothing on for {{ person.name }} this week.</div>
+  {% endfor %}
+</div>
+
+<div class="pager">
+  <a href="/kid/{{ person.id }}?start={{ prev }}">&larr; Previous week</a>
+  <a href="/kid/{{ person.id }}?start={{ next }}">Next week &rarr;</a>
+</div>
+{% endblock %}

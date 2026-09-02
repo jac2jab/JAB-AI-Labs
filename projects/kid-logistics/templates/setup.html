@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Set up</h1>
+<p class="sub">One household, one database, on your own server. This runs once.</p>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<form method="post" action="/setup" class="card">
+  <label for="household">Household name</label>
+  <input type="text" id="household" name="household" value="Home" required>
+
+  <label for="timezone">Timezone</label>
+  <select id="timezone" name="timezone">
+    {% for z in zones %}<option value="{{ z }}">{{ z }}</option>{% endfor %}
+  </select>
+
+  <label for="name">Your name</label>
+  <input type="text" id="name" name="name" autocomplete="username" required>
+
+  <label for="passcode">Passcode (at least 6 characters)</label>
+  <input type="password" id="passcode" name="passcode" autocomplete="new-password" required>
+
+  <div class="btns"><button class="btn" type="submit">Create</button></div>
+</form>
+{% endblock %}

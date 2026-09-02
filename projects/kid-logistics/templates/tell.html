@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Who to tell{% endblock %}
+{% block content %}
+
+<p class="sub"><a href="/event/{{ event.id }}">&larr; {{ event.title }}</a></p>
+<h1>Who needs to know</h1>
+<p class="sub">{{ label }} &middot; {{ event.title }}, {{ when }}</p>
+
+<p class="progress">
+  <b>{{ total - outstanding }} of {{ total }}</b> told{% if must_left %} &middot;
+  <span class="tag must">{{ must_left }} still must be told</span>{% endif %}
+</p>
+
+{% for r in rows %}
+<div class="card tell {% if r.told %}done{% elif r.urgency == 'must' %}must{% endif %}">
+  <div class="top">
+    <b>{{ r.name }}</b>
+    {% if r.told %}<span class="tag done">told</span>
+    {% elif r.urgency == 'must' %}<span class="tag must">must tell</span>
+    {% else %}<span class="tag fyi">fyi</span>{% endif %}
+  </div>
+  <div class="why">{{ r.why }}</div>
+
+  {% if not r.told %}
+    {% if r.phone %}
+      <div class="draft">{{ r.draft }}</div>
+      <div class="btns">
+        <a class="btn" href="{{ r.sms }}">Text</a>
+        <a class="btn ghost" href="{{ r.tel }}">Call</a>
+      </div>
+      <form method="post" action="/change/{{ change.id }}/told">
+        <input type="hidden" name="key" value="{{ r.key }}">
+        <button class="btn ghost small" type="submit">Mark as told</button>
+      </form>
+    {% else %}
+      <p class="error">No phone number on file &mdash; add one in Settings, or
+      reach them another way.</p>
+      <form method="post" action="/change/{{ change.id }}/told">
+        <input type="hidden" name="key" value="{{ r.key }}">
+        <button class="btn ghost small" type="submit">Mark as told anyway</button>
+      </form>
+    {% endif %}
+  {% endif %}
+</div>
+{% else %}
+<div class="card">
+  <p>Nobody outside the house needs telling about this one.</p>
+  <p class="small dim">The event has been updated, so whoever opens the app next
+    sees the change.</p>
+</div>
+{% endfor %}
+
+<div class="btns">
+  <a class="btn ghost" href="/event/{{ event.id }}">Back to the event</a>
+</div>
+{% endblock %}

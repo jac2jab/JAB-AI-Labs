@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ label }}</h1>
+<p class="sub">{{ rows | length }} event{{ '' if rows | length == 1 else 's' }}</p>
+
+<div class="card flat">
+  {% for row in rows %}
+  <a class="row {% if row.event.is_cancelled %}cancelled{% endif %}" href="/event/{{ row.event.id }}">
+    <div class="top">
+      <span class="time">{{ row.time }}</span>
+      <span class="title">{{ row.event.title }}</span>
+      <span class="dots">
+        {% for kid in row.kids %}<span class="dot" style="background: {{ kid.color }}"></span>{% endfor %}
+      </span>
+    </div>
+    <div class="meta">
+      {% if row.event.is_cancelled %}<b>Cancelled</b> &middot; {% endif %}
+      {% if row.event.location_name %}{{ row.event.location_name }}{% endif %}
+    </div>
+  </a>
+  {% else %}
+  <div class="empty">Nothing on this day.</div>
+  {% endfor %}
+</div>
+
+<div class="btns"><a class="btn" href="/event/new?when={{ day }}">Add an event</a></div>
+<div class="pager">
+  <a href="/day/{{ prev }}">&larr; {{ prev }}</a>
+  <a href="/day/{{ next }}">{{ next }} &rarr;</a>
+</div>
+{% endblock %}

@@ -1,0 +1,180 @@
+/* One stylesheet, no framework, phone first.
+   Tap targets are 44px minimum: this app gets used one-handed, in a car park,
+   often in a hurry, which is the whole design brief. */
+
+:root {
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --ink: #111827;
+  --dim: #6b7280;
+  --line: #e5e7eb;
+  --accent: #2563eb;
+  --must: #b91c1c;
+  --must-bg: #fef2f2;
+  --fyi: #6b7280;
+  --ok: #15803d;
+  --ok-bg: #f0fdf4;
+  --radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0f16;
+    --card: #151b25;
+    --ink: #e5e7eb;
+    --dim: #9ca3af;
+    --line: #253044;
+    --accent: #60a5fa;
+    --must: #fca5a5;
+    --must-bg: #2a1416;
+    --ok: #86efac;
+    --ok-bg: #10241a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+main { padding: 12px 14px 64px; max-width: 720px; margin: 0 auto; }
+
+a { color: var(--accent); }
+
+/* ---------------------------------------------------------------- nav */
+
+.bar {
+  display: flex; gap: 4px; align-items: center;
+  padding: 10px 14px calc(10px + env(safe-area-inset-top));
+  background: var(--card); border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 10;
+}
+.bar a, .bar .link {
+  padding: 8px 12px; border-radius: 8px; text-decoration: none;
+  color: var(--dim); font-weight: 600; font-size: 15px;
+}
+.bar a.on { color: var(--ink); background: var(--bg); }
+.bar form { margin-left: auto; }
+.bar .link { background: none; border: 0; cursor: pointer; font-family: inherit; }
+
+/* ---------------------------------------------------------------- type */
+
+h1 { font-size: 22px; margin: 8px 0 4px; }
+h2 { font-size: 17px; margin: 22px 0 8px; }
+h3 { font-size: 15px; margin: 0 0 6px; }
+.sub { color: var(--dim); font-size: 14px; margin: 0 0 16px; }
+.dim { color: var(--dim); }
+.small { font-size: 13px; }
+
+/* ---------------------------------------------------------------- cards */
+
+.card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px; margin-bottom: 10px;
+}
+.card.flat { padding: 0; overflow: hidden; }
+
+.row {
+  display: block; padding: 12px 14px; text-decoration: none; color: inherit;
+  border-bottom: 1px solid var(--line);
+}
+.row:last-child { border-bottom: 0; }
+.row:active { background: var(--bg); }
+.row .top { display: flex; align-items: baseline; gap: 8px; }
+.row .time { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 68px; }
+.row .title { font-weight: 600; flex: 1; }
+.row .meta { color: var(--dim); font-size: 13px; margin-top: 2px; }
+
+.cancelled .title, .cancelled .time { text-decoration: line-through; opacity: .55; }
+
+/* ---------------------------------------------------------------- people */
+
+.dots { display: inline-flex; gap: 4px; vertical-align: middle; }
+.dot {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+}
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 999px; background: var(--bg);
+  border: 1px solid var(--line); font-size: 14px; text-decoration: none;
+  color: inherit; margin: 0 6px 6px 0;
+}
+.chip .dot { width: 8px; height: 8px; }
+
+.kidbar { display: flex; gap: 8px; overflow-x: auto; margin: 0 0 14px; }
+
+/* ---------------------------------------------------------------- day */
+
+.day { margin-bottom: 16px; }
+.day > h2 { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.day.today > h2 { color: var(--accent); }
+.empty { color: var(--dim); font-size: 14px; padding: 10px 14px; }
+
+/* ---------------------------------------------------------------- buttons */
+
+.btn, button.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 11px 16px; border-radius: 10px;
+  background: var(--accent); color: #fff; border: 0; font-size: 16px;
+  font-weight: 600; text-decoration: none; cursor: pointer;
+  font-family: inherit; width: 100%;
+}
+.btn.ghost {
+  background: var(--card); color: var(--ink); border: 1px solid var(--line);
+}
+.btn.danger { background: var(--must); }
+.btn.small { min-height: 38px; padding: 8px 12px; font-size: 14px; width: auto; }
+.btn[disabled] { opacity: .5; }
+.btns { display: flex; gap: 8px; margin: 10px 0; }
+.btns .btn { flex: 1; }
+
+.reasons { display: grid; gap: 10px; }
+.reasons .btn { justify-content: flex-start; font-size: 17px; }
+
+/* ---------------------------------------------------------------- forms */
+
+label { display: block; font-size: 13px; color: var(--dim); margin: 12px 0 4px;
+        font-weight: 600; }
+input[type=text], input[type=tel], input[type=password], input[type=date],
+input[type=time], input[type=number], select, textarea {
+  width: 100%; padding: 12px; font-size: 16px; font-family: inherit;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--card); color: var(--ink);
+}
+textarea { min-height: 70px; }
+fieldset { border: 1px solid var(--line); border-radius: var(--radius);
+           margin: 12px 0; padding: 10px 14px; }
+legend { font-size: 13px; color: var(--dim); font-weight: 600; padding: 0 6px; }
+.check { display: flex; align-items: center; gap: 10px; padding: 9px 0;
+         font-size: 15px; color: var(--ink); margin: 0; text-transform: none; }
+.check input { width: 20px; height: 20px; }
+.error { background: var(--must-bg); color: var(--must); padding: 10px 12px;
+         border-radius: 10px; font-size: 14px; margin: 10px 0; }
+
+/* ---------------------------------------------------------------- tell */
+
+.tell { border-left: 4px solid var(--fyi); }
+.tell.must { border-left-color: var(--must); }
+.tell.done { border-left-color: var(--ok); background: var(--ok-bg); }
+.tell .why { color: var(--dim); font-size: 13px; margin: 2px 0 8px; }
+.tell .draft {
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px; font-size: 14px; margin: 8px 0; white-space: pre-wrap;
+}
+.tag { font-size: 11px; font-weight: 700; letter-spacing: .04em;
+       text-transform: uppercase; padding: 2px 7px; border-radius: 5px; }
+.tag.must { background: var(--must-bg); color: var(--must); }
+.tag.fyi { background: var(--bg); color: var(--dim); }
+.tag.done { background: var(--ok-bg); color: var(--ok); }
+.tag.warn { background: var(--must-bg); color: var(--must); }
+
+.progress { font-size: 14px; color: var(--dim); margin: 0 0 14px; }
+.progress b { color: var(--ink); }
+
+.pager { display: flex; justify-content: space-between; margin: 16px 0 0; }
+.pager a { font-size: 14px; }

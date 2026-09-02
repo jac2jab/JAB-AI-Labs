@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% set nav = 'new' %}
+{% block title %}Add an event{% endblock %}
+{% block content %}
+
+<h1>Add an event</h1>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+<form method="post" action="/event/new">
+  <div class="card">
+    <label for="title">What is it?</label>
+    <input type="text" id="title" name="title" placeholder="Soccer practice" required autofocus>
+
+    <label for="on">Date</label>
+    <input type="date" id="on" name="on" value="{{ default_date }}" required>
+
+    <label for="at">Start time</label>
+    <input type="time" id="at" name="at" value="17:30" required>
+
+    <label for="minutes">How long (minutes)</label>
+    <input type="number" id="minutes" name="minutes" value="90" min="5" max="600">
+
+    <label for="repeat_weeks">Repeat weekly for how many weeks?</label>
+    <input type="number" id="repeat_weeks" name="repeat_weeks" value="1" min="1" max="52">
+    <p class="small dim">Each week becomes its own event, so one rained-off
+       Tuesday can be cancelled without touching the rest of the season. The
+       time stays at the local hour even after the clocks change.</p>
+  </div>
+
+  <div class="card">
+    <label for="location_name">Place</label>
+    <input type="text" id="location_name" name="location_name" placeholder="Riverside Park">
+
+    <label for="location_address">Address (for the map link)</label>
+    <input type="text" id="location_address" name="location_address"
+           placeholder="100 Riverside Dr, Anytown">
+
+    <label for="bring">Bring</label>
+    <input type="text" id="bring" name="bring" placeholder="Shin guards, water bottle">
+
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes"></textarea>
+  </div>
+
+  <fieldset>
+    <legend>Who is going</legend>
+    {% for p in people if p.kind == 'kid' %}
+    <label class="check"><input type="checkbox" name="attending" value="person:{{ p.id }}">
+      <span class="dot" style="background: {{ p.color }}"></span> {{ p.name }}</label>
+    {% else %}
+    <p class="small dim">No kids added yet &mdash; add them in Settings.</p>
+    {% endfor %}
+  </fieldset>
+
+  <fieldset>
+    <legend>Who is driving</legend>
+    {% for p in people %}
+    <label class="check"><input type="checkbox" name="driving_there" value="person:{{ p.id }}">{{ p.name }}</label>
+    {% endfor %}
+    {% for c in contacts %}
+    <label class="check"><input type="checkbox" name="driving_there" value="contact:{{ c.id }}">{{ c.name }}</label>
+    {% endfor %}
+  </fieldset>
+
+  <fieldset>
+    <legend>Carpool &mdash; other families whose kid is in this car</legend>
+    <p class="small dim" style="margin:2px 0 6px">These are the people the app
+      warns you about when a ride falls through. Getting this right is what
+      makes the change screen worth having.</p>
+    {% for c in contacts %}
+    <label class="check"><input type="checkbox" name="carpool" value="contact:{{ c.id }}">{{ c.name }}{% if c.relation %} <span class="dim">&middot; {{ c.relation }}</span>{% endif %}</label>
+    {% else %}
+    <p class="small dim">No contacts yet &mdash; add them in Settings.</p>
+    {% endfor %}
+  </fieldset>
+
+  <fieldset>
+    <legend>Who else needs telling &mdash; coach, teacher</legend>
+    {% for c in contacts %}
+    <label class="check"><input type="checkbox" name="notify" value="contact:{{ c.id }}">{{ c.name }}</label>
+    {% endfor %}
+  </fieldset>
+
+  <div class="btns"><button class="btn" type="submit">Add it</button></div>
+</form>
+{% endblock %}

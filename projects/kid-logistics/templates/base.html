@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>{% block title %}Kid Logistics{% endblock %}</title>
+<link rel="manifest" href="/static/manifest.json">
+<link rel="apple-touch-icon" href="/static/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Logistics">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+
+{% if user %}
+<nav class="bar">
+  <a href="/" {% if nav == 'week' %}class="on"{% endif %}>Week</a>
+  <a href="/event/new" {% if nav == 'new' %}class="on"{% endif %}>Add</a>
+  <a href="/settings" {% if nav == 'settings' %}class="on"{% endif %}>Settings</a>
+  <form method="post" action="/signout"><button class="link">Sign out</button></form>
+</nav>
+{% endif %}
+
+<main>
+{% block content %}{% endblock %}
+</main>
+
+<script>
+// Registered so the app can be added to the Home Screen, which on iOS is a
+// hard requirement for notifications later. It caches nothing: iOS evicts PWA
+// storage after about a week unused and has no background sync, so the server
+// stays the source of truth and the phone just renders it.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/static/sw.js').catch(function () {});
+}
+</script>
+</body>
+</html>

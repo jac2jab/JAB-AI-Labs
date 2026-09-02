@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% set nav = 'week' %}
+{% block content %}
+
+<h1>{% if is_this_week %}This week{% else %}Week of {{ monday.day }} {{ monday.strftime('%B') }}{% endif %}</h1>
+<p class="sub">{{ count }} event{{ '' if count == 1 else 's' }}{% if unresolved %} &middot;
+  {{ unresolved }} change{{ '' if unresolved == 1 else 's' }} with someone still to tell{% endif %}</p>
+
+{% if kids %}
+<div class="kidbar">
+  {% for kid in kids %}
+  <a class="chip" href="/kid/{{ kid.id }}">
+    <span class="dot" style="background: {{ kid.color }}"></span>{{ kid.name }}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% for day in days %}
+<section class="day {% if day.is_today %}today{% endif %}">
+  <h2>{{ day.label }}{% if day.is_today %} <span class="tag fyi">today</span>{% endif %}</h2>
+  <div class="card flat">
+    {% for row in day.events %}
+    <a class="row {% if row.event.is_cancelled %}cancelled{% endif %}" href="/event/{{ row.event.id }}">
+      <div class="top">
+        <span class="time">{{ row.time }}</span>
+        <span class="title">{{ row.event.title }}</span>
+        <span class="dots">
+          {% for kid in row.kids %}<span class="dot" style="background: {{ kid.color }}" title="{{ kid.name }}"></span>{% endfor %}
+        </span>
+      </div>
+      <div class="meta">
+        {% if row.event.is_cancelled %}<b>Cancelled</b> &middot;
+        {% elif row.event.status == 'changed' %}<b>Changed</b> &middot;
+        {% endif %}
+        {% if row.event.location_name %}{{ row.event.location_name }}{% endif %}
+        {% if row.drivers %} &middot; {{ row.drivers | join(', ') }} driving{% endif %}
+      </div>
+    </a>
+    {% else %}
+    <div class="empty">Nothing on. <a href="/event/new?when={{ day.date }}">Add something</a></div>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+
+<div class="pager">
+  <a href="/?start={{ prev }}">&larr; Previous week</a>
+  <a href="/?start={{ next }}">Next week &rarr;</a>
+</div>
+{% endblock %}

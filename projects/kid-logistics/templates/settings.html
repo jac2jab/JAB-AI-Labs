@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% set nav = 'settings' %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+
+<h1>Settings</h1>
+<p class="sub">{{ household['name'] }} &middot; {{ household['timezone'] }}</p>
+
+<h2>You</h2>
+<form method="post" action="/settings/me" class="card">
+  <label for="person_id">You are</label>
+  <select id="person_id" name="person_id">
+    <option value="">&mdash; nobody yet &mdash;</option>
+    {% for p in people %}
+    <option value="{{ p.id }}" {% if user.person_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+    {% endfor %}
+  </select>
+  <p class="small dim">How the app knows not to put you on your own list of
+     people to text.</p>
+
+  <label for="platform">Your phone</label>
+  <select id="platform" name="platform">
+    <option value="ios" {% if user.platform == 'ios' %}selected{% endif %}>iPhone</option>
+    <option value="android" {% if user.platform == 'android' %}selected{% endif %}>Android</option>
+  </select>
+  <p class="small dim">iPhone and Android disagree about how to prefill a text
+     message. Set this wrong and the Text buttons open an empty message.</p>
+
+  <label for="timezone">Household timezone</label>
+  <select id="timezone" name="timezone">
+    {% for z in zones %}
+    <option value="{{ z }}" {% if household['timezone'] == z %}selected{% endif %}>{{ z }}</option>
+    {% endfor %}
+  </select>
+
+  <div class="btns"><button class="btn ghost" type="submit">Save</button></div>
+</form>
+
+<h2>Household</h2>
+<div class="card flat">
+  {% for p in people %}
+  <form method="post" action="/settings/person/{{ p.id }}" class="row">
+    <div class="top">
+      <span class="title"><span class="dot" style="background: {{ p.color }}"></span> {{ p.name }}</span>
+      <span class="tag fyi">{{ p.kind }}</span>
+    </div>
+    <label for="phone-{{ p.id }}">Phone</label>
+    <input type="tel" id="phone-{{ p.id }}" name="phone" value="{{ p.phone or '' }}"
+           placeholder="(555) 222-3333">
+    <label for="checkin-{{ p.id }}">Check-in link (Life360, Find My, anything)</label>
+    <input type="text" id="checkin-{{ p.id }}" name="checkin_url" value="{{ p.checkin_url or '' }}"
+           placeholder="https://...">
+    <label for="color-{{ p.id }}">Colour</label>
+    <select id="color-{{ p.id }}" name="color">
+      {% for c in palette %}
+      <option value="{{ c }}" {% if p.color == c %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+    <div class="btns"><button class="btn ghost small" type="submit">Save {{ p.name }}</button></div>
+  </form>
+  {% else %}
+  <div class="empty">Nobody in the household yet.</div>
+  {% endfor %}
+</div>
+
+<form method="post" action="/settings/person" class="card">
+  <h3>Add someone to the household</h3>
+  <label for="np">Name</label>
+  <input type="text" id="np" name="name" required>
+  <label for="nk">Kid or adult</label>
+  <select id="nk" name="kind"><option value="kid">Kid</option><option value="adult">Adult</option></select>
+  <label for="nph">Phone (optional)</label>
+  <input type="tel" id="nph" name="phone">
+  <div class="btns"><button class="btn ghost" type="submit">Add</button></div>
+</form>
+
+<h2>Contacts</h2>
+<p class="sub">Other parents, coaches, carpool families. They never sign in
+   &mdash; they get a normal text from you.</p>
+<div class="card flat">
+  {% for c in contacts %}
+  <div class="row">
+    <div class="top"><span class="title">{{ c.name }}</span>
+      {% if c.relation %}<span class="tag fyi">{{ c.relation }}</span>{% endif %}</div>
+    <div class="meta">{{ c.phone or 'no number on file' }}{% if c.org %} &middot; {{ c.org }}{% endif %}</div>
+  </div>
+  {% else %}
+  <div class="empty">No contacts yet.</div>
+  {% endfor %}
+</div>
+
+<form method="post" action="/settings/contact" class="card">
+  <h3>Add a contact</h3>
+  <label for="cn">Name</label>
+  <input type="text" id="cn" name="name" required>
+  <label for="cp">Phone</label>
+  <input type="tel" id="cp" name="phone" placeholder="(555) 222-3333">
+  <label for="cr">Relation</label>
+  <input type="text" id="cr" name="relation" placeholder="carpool / coach">
+  <div class="btns"><button class="btn ghost" type="submit">Add</button></div>
+</form>
+
+<h2>Accounts</h2>
+<div class="card flat">
+  {% for u in users %}
+  <div class="row"><div class="top"><span class="title">{{ u.name }}</span>
+    <span class="tag fyi">{{ u.platform or 'phone unknown' }}</span></div></div>
+  {% endfor %}
+</div>
+
+<form method="post" action="/settings/user" class="card">
+  <h3>Add the other parent</h3>
+  <label for="un">Name</label>
+  <input type="text" id="un" name="name" required>
+  <label for="up">Passcode (at least 6 characters)</label>
+  <input type="password" id="up" name="passcode" required>
+  <label for="ui">They are</label>
+  <select id="ui" name="person_id">
+    <option value="">&mdash; choose &mdash;</option>
+    {% for p in people if p.kind == 'adult' %}
+    <option value="{{ p.id }}">{{ p.name }}</option>
+    {% endfor %}
+  </select>
+  <div class="btns"><button class="btn ghost" type="submit">Create account</button></div>
+</form>
+
+{% endblock %}

@@ -1,0 +1,17 @@
+{
+  "name": "Kid Logistics",
+  "short_name": "Logistics",
+  "description": "The family schedule, and who to tell when it changes.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f7f9",
+  "theme_color": "#111827",
+  "icons": [
+    { "src": "/static/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png",
+      "purpose": "any maskable" }
+  ]
+}

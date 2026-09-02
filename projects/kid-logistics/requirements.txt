@@ -1,0 +1,21 @@
+# Kid Logistics
+#
+# Server-rendered pages, no Node, no build step — the same shape as
+# receipt-scanner, for the same reason: a working thing this month beats a
+# toolchain.
+
+fastapi>=0.115            # the web app
+uvicorn[standard]>=0.32   # serving it
+jinja2>=3.1               # server-rendered pages
+python-multipart>=0.0.9   # form posts from the phone
+
+# Windows ships no IANA timezone database, so zoneinfo raises
+# ZoneInfoNotFoundError without this. Every time in the app is stored in UTC
+# and rendered in the household's zone, so this is not optional here.
+tzdata>=2024.1 ; sys_platform == "win32"
+
+# Test only — FastAPI's TestClient is built on httpx.
+httpx>=0.27               # selftest_app.py
+
+# Not yet used. Web Push arrives with notify.py; see the README.
+# pywebpush>=2.0
