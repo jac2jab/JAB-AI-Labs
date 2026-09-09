@@ -429,6 +429,36 @@ def load_pack(
     return "\n\n---\n\n".join(parts), status, selected_areas
 
 
+# Subsections of a demo flow that exist for the SE and must never reach the
+# model.
+#
+# "Where it goes wrong" records what breaks in *the demo environment* and how to
+# recover in the room. Sent to the model, it came back as a customer-facing
+# product limitation: a note that the lab has no seeded endpoint workbench was
+# rendered as "No workbench for endpoint incidents" under Technical Limitations,
+# which is false about the product and would have been said to a technical
+# evaluator.
+#
+# Stripped in code rather than asked for in the prompt, and stripped on the way
+# to the model only — the section stays in the pack file, where the SE reads it.
+INTERNAL_FLOW_SECTIONS = ("where it goes wrong",)
+
+
+def strip_internal_sections(flow_text: str) -> str:
+    """Remove SE-only subsections from a flow before the model sees it."""
+    kept = []
+
+    for part in re.split(r"(?m)^(?=###[ \t])", flow_text):
+        heading = part.split("\n", 1)[0].lstrip("#").strip().lower()
+
+        if any(heading.startswith(internal) for internal in INTERNAL_FLOW_SECTIONS):
+            continue
+
+        kept.append(part.rstrip())
+
+    return "\n\n".join(part for part in kept if part)
+
+
 def parse_demo_flows(text: str) -> list[dict]:
     """Split a demo_flows.md into its per-solution-area flows.
 
@@ -492,7 +522,7 @@ def select_demo_flows(
     flows = parse_demo_flows(text)
 
     if not flows:
-        return text, []
+        return strip_internal_sections(text), []
 
     haystack = " ".join(signals).lower()
     wanted = {area.strip().lower() for area in (areas or []) if area.strip()}
@@ -509,10 +539,10 @@ def select_demo_flows(
     matched = [flow for flow in flows if is_selected(flow)]
 
     if not matched:
-        return text, []
+        return strip_internal_sections(text), []
 
     return (
-        "\n\n".join(flow["text"] for flow in matched),
+        "\n\n".join(strip_internal_sections(flow["text"]) for flow in matched),
         [flow["area"] for flow in matched],
     )
 
