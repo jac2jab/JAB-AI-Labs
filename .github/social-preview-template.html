@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<!--
+  GitHub social-preview card for JAB AI Labs. 1280x640, GitHub's recommended size.
+
+  THIS IS THE SOURCE for social-preview.png. Edit here, then run
+  render_social_preview.py in this folder. The original PNG was generated once and
+  only the pixels were kept; when its MAIOS figure went stale on 10 Sep 2026 there
+  was nothing to edit, and the card had to be rebuilt. Keep this file.
+
+  GitHub does NOT read social-preview.png from the repo. After rendering, upload it
+  by hand: repo Settings > General > Social preview > Edit > Upload an image.
+
+  Same design system as the Career Impact Dashboard card, deliberately mirrored:
+  pink accent bar and pink wash top-left, blue wash top-right.
+
+  Every figure here must match the public README. MAIOS: 98% reading reduction on
+  real mail (39,276 words to 843), verified 10 Sep 2026. Never 92% (v0.4) and never
+  "3,903 words" (a baseline the README itself retracts).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  :root{
+    --plane:#0d0d0d; --ink:#ffffff; --ink-2:#c3c2b7; --ink-muted:#898781;
+    --s1:#3987e5; --s3:#199e70; --s5:#d55181;
+    --sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{width:1280px; height:640px; overflow:hidden}
+  body{position:relative; background:var(--plane); font-family:var(--sans); color:var(--ink);
+       -webkit-font-smoothing:antialiased}
+  /* Layer order matters, and was worked out by sampling the original's pixels:
+     the corner glows sit BEHIND the disc, so its arc cuts across them; the green
+     floor glow sits IN FRONT, so it shows through the disc's centre. */
+  .wash-corners{
+    position:absolute; inset:0;
+    background:
+      radial-gradient(760px 460px at 8% 4%,    rgba(213,81,129,.10), transparent 60%),
+      radial-gradient(1150px 1150px at 97% 0%, rgba(57,135,229,.14), transparent 62%);
+  }
+  .wash-floor{
+    position:absolute; inset:0;
+    background:radial-gradient(1000px 640px at 50% 108%, rgba(25,158,112,.075), transparent 64%);
+  }
+  .disc{
+    position:absolute; left:-330px; top:68px; width:1860px; height:1860px; border-radius:50%;
+    /* closest-side: stops measure to the RADIUS. Without it they measure to the farthest
+       corner (~1315px here) and the fill stops ~650px out, far short of the circle. */
+    background:radial-gradient(closest-side, rgba(11,11,11,.94) 0, rgba(11,11,11,.94) 97%, rgba(11,11,11,0) 100%);
+  }
+  .bar{position:absolute; left:0; top:0; width:10px; height:640px; background:var(--s5)}
+
+  .content{position:absolute; left:76px; top:0; right:76px; height:640px}
+  .eyebrow{position:absolute; top:74px; left:0; font-size:19.5px; font-weight:700;
+           letter-spacing:.055em; text-transform:uppercase; color:var(--ink-muted); white-space:nowrap}
+  .eyebrow .sep{margin:0 .55em}
+  .name{position:absolute; top:138px; left:0; font-size:86px; font-weight:700;
+        letter-spacing:-.012em; line-height:1.08}
+  .role{position:absolute; top:236px; left:0; font-size:32px; font-weight:400; color:var(--ink-2)}
+  .rule{position:absolute; top:322px; left:0; right:0; height:1px; background:rgba(255,255,255,.12)}
+
+  .stats{position:absolute; top:366px; left:0; display:grid; grid-template-columns:repeat(3,382px)}
+  .v{display:block; font-size:56px; font-weight:700; line-height:1.1; letter-spacing:-.01em}
+  .k{display:block; margin-top:3px; font-size:21px; line-height:1.5; color:var(--ink-2)}
+  .c1{color:var(--s1)} .c3{color:var(--s3)} .c5{color:var(--s5)}
+
+  .foot{position:absolute; top:557px; left:0; font-size:23.25px; color:var(--ink-muted)}
+</style>
+</head>
+<body>
+  <div class="wash-corners"></div>
+  <div class="disc"></div>
+  <div class="wash-floor"></div>
+  <div class="bar"></div>
+  <div class="content">
+    <div class="eyebrow">Applied AI Projects<span class="sep">·</span>Working Code</div>
+    <div class="name">JAB AI Labs</div>
+    <div class="role">MAIOS — My AI Operating System</div>
+    <div class="rule"></div>
+    <div class="stats">
+      <div><span class="v c3">98%</span><span class="k">reading reduction<br>vs an 80% target</span></div>
+      <div><span class="v c5">2</span><span class="k">AI systems running<br>end to end</span></div>
+      <div><span class="v c1">Local</span><span class="k">model by default<br>private by design</span></div>
+    </div>
+    <div class="foot">github.com/jac2jab/JAB-AI-Labs</div>
+  </div>
+</body>
+</html>
