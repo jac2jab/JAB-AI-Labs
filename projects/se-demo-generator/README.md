@@ -4,7 +4,7 @@ Turns raw discovery notes into a deal-ready demo plan: recommended demo flow,
 executive and technical talk tracks, competitive positioning, and the questions
 that advance the deal.
 
-Built from thirty years of sales engineering, on the observation that the
+Built from years of sales engineering, on the observation that the
 expensive part of demo prep is not writing the document — it is knowing which
 five minutes of the product to show *this* customer, and why.
 

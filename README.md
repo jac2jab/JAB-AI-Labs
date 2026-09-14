@@ -7,9 +7,10 @@ work is **MAIOS** — *My AI Operating System*, pronounced "Myos" — a framewor
 reducing information overload, automating repetitive work, and organizing private
 knowledge.
 
-I'm a customer-facing solutions engineer with 30 years in enterprise technology
-(Trend Micro, Juniper Networks), currently building AI systems hands-on rather than
-only reading about them. This repo is where that happens in public.
+I'm a customer-facing solutions engineer, 13 years in technology roles across a
+30-year career (Trend Micro, Juniper Networks), currently building AI systems
+hands-on rather than only reading about them. This repo is where that happens in
+public.
 
 ---
 
