@@ -12,6 +12,7 @@ reading time by at least 80%" target is measured rather than assumed.
 import argparse
 import json
 import re
+import sys
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -331,7 +332,27 @@ def word_count(text: str) -> int:
     return len(text.split())
 
 
+def force_utf8_console() -> None:
+    """Print story titles as they were written, whatever the console encoding.
+
+    Newsletter headlines carry emoji. Windows defaults stdout to the ANSI code
+    page, where one lightbulb in a headline raised UnicodeEncodeError and ended
+    a 149-story run at story 17 - after the model had already scored those 17.
+    Files are written with an explicit encoding already; this is the console
+    catching up.
+
+    errors="replace" is deliberate belt-and-braces: a title that still will not
+    encode prints a placeholder character instead of discarding the run.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def main() -> None:
+    force_utf8_console()
+
     parser = argparse.ArgumentParser(
         description="Turn an inbox into one prioritized morning brief."
     )
@@ -474,7 +495,17 @@ def main() -> None:
         print(f"Brief written to:    {output_file}")
 
     except (FileNotFoundError, ValueError, json.JSONDecodeError) as error:
+        # This handler is for a source that cannot be read - every ValueError
+        # raised in the pipeline comes from ingest.py. UnicodeError subclasses
+        # ValueError, though, so a console that could not print a story title
+        # was being reported as a malformed source. Let it out with its
+        # traceback instead of misattributing it.
+        if isinstance(error, UnicodeError):
+            raise
         print(f"Unable to generate daily brief: {error}")
+        # A run that ended here produced no brief. Exiting 0 told every caller
+        # it had succeeded.
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
