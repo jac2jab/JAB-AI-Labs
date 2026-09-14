@@ -36,22 +36,23 @@ Generate an automated, prioritized summary focused on:
 
 ### Success Criteria
 
-Status as of **v0.5** — measured, not asserted, against the run documented in
-the [README](README.md#maios-daily-brief--current-state): 28 real emails from 13 newsletters,
-split into 149 stories. See [`projects/maios-daily-brief`](projects/maios-daily-brief).
+Status as of **v0.5, 14 September 2026** — measured, not asserted, against the
+run [pasted into the README](README.md#maios-daily-brief--current-state): 28
+real emails, split into 149 stories. See
+[`projects/maios-daily-brief`](projects/maios-daily-brief).
 
 | Criterion | Status |
 |---|---|
 | Relevant newsletters are identified automatically | Met — each email split into its own stories, then scored by `llama3.1:8b`, with keyword matching as a named fallback |
-| Duplicate stories are consolidated | **Partial** — lexical overlap merges 12 stories, but it cannot separate a true duplicate from an unrelated pair; the two-stage embedding design is built and being measured |
-| Marketing noise is removed | Met — 90 of 149 stories filtered below the relevance floor |
+| Duplicate stories are consolidated | Met — embeddings narrow 11,026 pairs to 16 candidates, then `llama3.1:8b` confirms each one; 12 stories merged |
+| Marketing noise is removed | Met — 103 of 149 stories filtered below the relevance floor |
 | Important stories are prioritized | Met — 1–5 scoring, sorted, every score explains itself |
-| **Daily reading time is reduced by at least 80%** | **Met — 98% measured (39,276 words in, 843 out)** |
+| **Daily reading time is reduced by at least 80%** | **Met — 98% measured (39,276 words in, 651 out)** |
 | A concise morning briefing is produced | Met — model-generated summaries, dated Markdown output |
 
-Open: deduplication is the one criterion not met — see
-[Known limitations](README.md#known-limitations) for why lexical overlap is
-exhausted and embeddings alone do not replace it.
+Open: the confirmation call's judgment is the remaining soft spot, not the
+mechanism — see [Known limitations](README.md#known-limitations) for the two
+calls on the current run worth arguing with.
 
 This table previously reported **92% (1,589 words in, 130 out)**, measured
 against a synthetic fixture at v0.4. v0.5 runs against real mail; the figure

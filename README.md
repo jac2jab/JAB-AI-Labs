@@ -59,15 +59,26 @@ Current run — the most recent two issues from every newsletter actually
 subscribed to, scored by a local `llama3.1:8b` and summarized by `llama3.2`:
 
 ```
-Emails in:           28     from 13 newsletters
-Stories after split: 149    (10 of 13 senders split)
+Source:              28 .eml files from Email Newsletters/
+Emails in:           28
+Stories after split: 149
 Duplicates merged:  -12
-Below relevance:    -90
-Beyond top 4/issue:  -9
-Items out:           38
-Words to read:       39,276 -> 843
+Below relevance:    -103
+Beyond top 4/issue:  -5
+Items out:           29
+Item reduction:      81%
+Words to read:       39,276 -> 651
 Reading reduction:   98%  (target: 80%)
+Relevance scorer:    ollama:llama3.1:8b
+Duplicate detection: embeddings + llama3.1:8b confirmation (16 candidates checked)
+Summarizer:          ollama:llama3.2
 ```
+
+Pasted from the run of **14 September 2026**, unedited. `relevance.py` and
+`duplicates.py` pin a fixed seed, so the item counts reproduce; `summarizer.py`
+pins neither, so words out drifts a little between runs — an identical run on
+26 August produced 644 rather than 651. The percentage is not sensitive to that
+drift.
 
 **The roadmap's target is reading time, so the metric counts words, not items.**
 An inbox of long newsletters and a brief of one-line summaries are not
@@ -76,10 +87,10 @@ anything is split or dropped — see
 [the corrected baseline](#first-run-against-real-mail-14-aug-2026) for why that
 distinction matters.
 
-**The relevance floor removes 90 items and the per-issue cap only 9.** That
+**The relevance floor removes 103 stories and the per-issue cap only 5.** That
 split is the point: an earlier v0.5 run had those at 39 and 30, which meant
 structure was filtering the brief and the scorer was not. Priority now carries
-information — 33% of stories reach the top score, against 66% before the
+information — 35 of 149 stories reach the top score, against 66% before the
 capability category was split.
 
 ### Input sources
@@ -274,14 +285,20 @@ Summarization already uses a model; relevance does not. That is the gap.
 
 ### Known limitations
 
-- **Deduplication is built but not wired in.** Lexical overlap is measurably
-  exhausted: across the corpus the true duplicate (Techpresso and The Neuron
-  both covering the Grok 4.6 launch) scored **0.250**, *below* an unrelated pair
-  at **0.263**. No threshold separates them. Embeddings alone do not fix it
-  either — same topic is not the same event, and an mRNA vaccine story and a
-  robotics story scored 0.786 against the true pair's 0.793. The two-stage
-  design — embeddings to narrow 11,026 pairs to a handful, then one narrow
-  *same event, yes or no* per candidate — is built and being measured.
+- **Deduplication is wired in, and its judgment is not perfect.** The two-stage
+  design now runs: embeddings narrow 11,026 pairs to 16 candidates, then one
+  narrow *same event, yes or no* goes to `llama3.1:8b` per candidate. It merges
+  12 stories on the current run, including cross-newsletter pairs neither stage
+  could catch alone — *REPLIT INTRODUCES FREE MODE* against *🚀 Replit Launches
+  Free Mode*. Both stages were necessary: lexical overlap is measurably
+  exhausted, scoring the true Grok 4.6 duplicate at **0.250**, *below* an
+  unrelated pair at **0.263**; embeddings alone confuse topic with event, an
+  mRNA vaccine story and a robotics story scoring 0.786 against that pair's
+  0.793. What remains is the confirmation call's own judgment — it reads
+  *OPENAI SLOWED TRAINING OVER CYBER* and *OPENAI REWRITES SAFETY FRAMEWORK* as
+  the same event, which is arguable, and two identically titled *What's
+  trending* sections as different ones, which is probably right for a recurring
+  column but is not something the stage reasons about explicitly.
 - **`ben's bites` and `NVIDIA Developer Relations` do not split.** ben's bites
   is conversational prose with no heading structure; the NVIDIA digest is 4,974
   words and remains one story.
