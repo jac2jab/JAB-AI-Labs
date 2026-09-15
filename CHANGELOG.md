@@ -1,5 +1,51 @@
 # JAB AI Labs Changelog
 
+## 2026-09-14 — MAIOS Daily Brief: a failed run that reported success
+
+A re-run against real mail, to check the README's published figures, died at
+story 17 of 149 — and exited 0. Two bugs, and the second is why the first
+could have gone unnoticed.
+
+### Fixed
+- **An emoji in a headline ended the run.** Story 17 was titled with 💡, and on
+  Windows stdout defaults to the ANSI code page, so printing the progress line
+  raised `UnicodeEncodeError`. The model had already scored seventeen stories;
+  all of it was discarded. Files were written with an explicit utf-8 encoding
+  throughout — only the console was assuming. `force_utf8_console()` now
+  reconfigures stdout and stderr at startup, with `errors="replace"` so a title
+  that still will not encode prints a placeholder instead of ending the run. At
+  least two more headlines in the same corpus (⚖️, 🤖, at stories 107 and 108)
+  would have hit it, so it was never a one-off.
+- **The crash was reported as bad input, and as success.** `main()` catches
+  `(FileNotFoundError, ValueError, json.JSONDecodeError)` for a source that
+  cannot be read — every `ValueError` in the pipeline comes from `ingest.py`.
+  But `UnicodeError` subclasses `ValueError`, so the encoding crash was caught
+  there, printed as though the mail were malformed, and the process returned
+  normally. A run that produced no brief told its caller it had succeeded.
+  `UnicodeError` now propagates with its traceback, and a genuine source error
+  exits 1.
+
+Verified both: a missing source directory exits 1, and a 💡-prefixed headline prints
+intact under `PYTHONIOENCODING=cp1252`.
+
+### Corrected — found by the run the fixes unblocked
+- **The README's stats block matched no saved brief.** It reported 90 stories
+  below the relevance floor, 9 over the per-issue cap, 38 out and 843 words.
+  The 14 September run reproduces the 26 August brief instead — 103, 5, 29 —
+  so the block had been written from superseded code. It is now pasted from the
+  run unedited, and the run's brief is committed beside it. The 98% was never in
+  question: 39,276 words to 651 is still 98% against an 80% target.
+- **Words out does not reproduce exactly.** `relevance.py` and `duplicates.py`
+  pin a seed; `summarizer.py` pins neither seed nor temperature, so the same 28
+  emails gave 644 words in August and 651 now. The README says so rather than
+  implying a precision the pipeline does not have. Seeding the summarizer is
+  open.
+- **Known limitations said deduplication was "built but not wired in."** The run
+  shows it running: embeddings narrow 11,026 pairs to 16 candidates and
+  `llama3.1:8b` confirms each, merging 12. The ROADMAP had repeated the stale
+  note and marked the criterion Partial; both now describe what runs, and name
+  the two confirmation calls on this run worth arguing with.
+
 ## 2026-08-24 — Receipt Scanner v0.1: the model reports, the code decides
 
 A receipt scanner built in Google AI Studio in 2026 never reached working state
