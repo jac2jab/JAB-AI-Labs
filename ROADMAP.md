@@ -47,7 +47,7 @@ real emails, split into 149 stories. See
 | Duplicate stories are consolidated | Met — embeddings narrow 11,026 pairs to 16 candidates, then `llama3.1:8b` confirms each one; 12 stories merged |
 | Marketing noise is removed | Met — 103 of 149 stories filtered below the relevance floor |
 | Important stories are prioritized | Met — 1–5 scoring, sorted, every score explains itself |
-| **Daily reading time is reduced by at least 80%** | **Met — 98% measured (39,276 words in, 651 out)** |
+| **Daily reading time is reduced by at least 80%** | **Met — 98% measured (39,276 words in, 668 out)** |
 | A concise morning briefing is produced | Met — model-generated summaries, dated Markdown output |
 
 Open: the confirmation call's judgment is the remaining soft spot, not the

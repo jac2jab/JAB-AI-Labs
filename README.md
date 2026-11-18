@@ -67,18 +67,22 @@ Below relevance:    -103
 Beyond top 4/issue:  -5
 Items out:           29
 Item reduction:      81%
-Words to read:       39,276 -> 651
+Words to read:       39,276 -> 668
 Reading reduction:   98%  (target: 80%)
 Relevance scorer:    ollama:llama3.1:8b
 Duplicate detection: embeddings + llama3.1:8b confirmation (16 candidates checked)
 Summarizer:          ollama:llama3.2
 ```
 
-Pasted from the run of **14 September 2026**, unedited. `relevance.py` and
-`duplicates.py` pin a fixed seed, so the item counts reproduce; `summarizer.py`
-pins neither, so words out drifts a little between runs — an identical run on
-26 August produced 644 rather than 651. The percentage is not sensitive to that
-drift.
+Pasted from the run of **15 September 2026**, unedited. `relevance.py`,
+`duplicates.py` and the local backend of `summarizer.py` all pin a fixed seed and
+`temperature=0`, so a rerun on the same mail reproduces: two back-to-back runs
+wrote byte-identical briefs. That holds when every model call succeeds. If one
+fails, `summarize_all` substitutes the extractive first sentence for that item,
+the brief's summarizer line says `(degraded — some items fell back)`, and words
+out shifts (one such run gave 669). The run prints each fallback and why. Only a
+run with no fallbacks supplies a figure here. The hosted Anthropic backend has no
+seed parameter, so only the local one reproduces.
 
 **The roadmap's target is reading time, so the metric counts words, not items.**
 An inbox of long newsletters and a brief of one-line summaries are not

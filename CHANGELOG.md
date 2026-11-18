@@ -1,5 +1,39 @@
 # JAB AI Labs Changelog
 
+## 2026-11-18 — MAIOS Daily Brief: the summarizer is seeded, and a fallback says why
+
+Closes the item the 14 September entry left open. The runs below were made on
+15 September; this is when they were published.
+
+### Fixed
+- **The summarizer sampled freshly on every request.** `relevance.py` and
+  `duplicates.py` pinned a seed; the Ollama call in `summarizer.py` did not, so
+  Ollama picked one at random each time. Four stories summarized three times
+  each gave three different sentences for every one of them — one story gained a
+  date ("effective October 1") the other two omitted, so content drifted, not
+  just wording. With the same seed and `temperature=0` the other modules use,
+  none of the four varied. The hosted backend has no seed parameter, so only the local
+  one reproduces.
+- **A fallback recorded no reason.** `summarize_all` caught
+  `SummarizerUnavailable`, substituted the extractive summary and set the
+  degraded label, but threw the error away — a timeout, an empty reply and a dead
+  server looked identical. It now keeps the message per item and the run prints
+  a count and each reason. Same shape as the exit-0 bug of 14 September, milder
+  because the brief was already labelled.
+
+### Corrected
+- **Words out is 668, not 651.** Three runs on the same 28 emails after the
+  change gave 39,276 → 668 (98%) each time, with identical counts at every
+  stage (12 / 103 / 5 / 29). The last two wrote byte-identical briefs. README
+  and ROADMAP now say 668, and the run's brief is committed beside it.
+- **The earlier run that did not match was a fallback, not variance.** A seeded
+  run on 15 September gave 669: one OpenAI story's model call failed and the
+  extractive summary stood in, and the brief said so. Every model-written
+  summary in it was identical to the other run's. The failure did not recur in
+  three further runs, so its cause is still unknown — likely a transient Ollama
+  stall, since the timeout is 180 s — and the next one will record it.
+- **A degraded brief does not supply a published figure.** The README says so.
+
 ## 2026-09-14 — MAIOS Daily Brief: a failed run that reported success
 
 A re-run against real mail, to check the README's published figures, died at
