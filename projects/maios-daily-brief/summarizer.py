@@ -204,14 +204,17 @@ def select_backend() -> tuple[str, Callable[[dict], str]]:
     return "extractive-fallback", _summarize_extractively
 
 
-def summarize_all(emails: list[dict]) -> tuple[list[dict], str]:
-    """Attach a summary to every email. Returns the emails and the backend used.
+def summarize_all(emails: list[dict]) -> tuple[list[dict], str, list[str]]:
+    """Attach a summary to every email. Returns the emails, the backend used,
+    and why each fallback happened.
 
     If a model backend fails partway through, the remaining items fall back to
-    the extractive summarizer rather than aborting the whole brief.
+    the extractive summarizer rather than aborting the whole brief. The reason
+    for each fallback is kept — a run that degrades silently cannot tell a
+    timeout from an empty response from a dead server.
     """
     backend_name, summarize = select_backend()
-    degraded = False
+    fallback_reasons = []
 
     summarized = []
 
@@ -221,14 +224,14 @@ def summarize_all(emails: list[dict]) -> tuple[list[dict], str]:
         try:
             item["summary"] = summarize(email)
             item["summary_source"] = backend_name
-        except SummarizerUnavailable:
+        except SummarizerUnavailable as error:
             item["summary"] = _summarize_extractively(email)
             item["summary_source"] = "extractive-fallback"
-            degraded = True
+            fallback_reasons.append(f"{email.get('subject', 'No subject')}: {error}")
 
         summarized.append(item)
 
-    if degraded and backend_name != "extractive-fallback":
+    if fallback_reasons and backend_name != "extractive-fallback":
         backend_name = f"{backend_name} (degraded — some items fell back)"
 
-    return summarized, backend_name
+    return summarized, backend_name, fallback_reasons

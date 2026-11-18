@@ -431,7 +431,7 @@ def main() -> None:
         selected = cap_per_issue(above_floor, args.per_issue)
         capped_out = len(above_floor) - len(selected)
 
-        summarized, backend = summarize_all(selected)
+        summarized, backend, fallback_reasons = summarize_all(selected)
 
         output_words = sum(word_count(e.get("summary", "")) for e in summarized)
 
@@ -492,6 +492,12 @@ def main() -> None:
             print(f"  fell back to keywords for {scored_by_fallback} items")
 
         print(f"Summarizer:          {backend}")
+
+        if fallback_reasons:
+            print(f"  fell back to extractive for {len(fallback_reasons)} items:")
+            for reason in fallback_reasons:
+                print(f"    - {reason}")
+
         print(f"Brief written to:    {output_file}")
 
     except (FileNotFoundError, ValueError, json.JSONDecodeError) as error:
