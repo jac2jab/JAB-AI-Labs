@@ -15,6 +15,8 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable
 
+import relevance
+
 # Local model (MAIOS Principle 1 — private by default).
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("MAIOS_OLLAMA_MODEL", "llama3.2")
@@ -73,6 +75,18 @@ def _summarize_with_ollama(email: dict) -> str:
                 {"role": "user", "content": _prompt_for(email)},
             ],
             "stream": False,
+            # The same seed and temperature as relevance and duplicate
+            # confirmation, for the same reason: without them Ollama samples
+            # freshly on every request. Unseeded, four stories summarized three
+            # times each gave three different sentences every time - one of
+            # them adding a date the other two left out - and the brief's
+            # words-out figure moved between runs on identical mail (644, 651).
+            # The hosted backend has no seed parameter, so only this one
+            # reproduces.
+            "options": {
+                "temperature": relevance.TEMPERATURE,
+                "seed": relevance.SEED,
+            },
         }
     ).encode("utf-8")
 
